@@ -1,0 +1,600 @@
+---
+title: "Raport 1"
+author: "Piotr Wójcik"
+date: "10/10/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(scipen=999)
+```
+<font size="3">
+<p>W poniższym dokumencie będę prezentował zadania z pierwszej listy z przedmiotu <em>Statystyka</em> wykładanego na <span style="white-space: nowrap; font-style: italic;">Uniwersytecie Wrocławskim</span> w roku akademickim 2021/2022 w semestrze zimowym.</p>
+
+<h2>Zadanie 1</h2>
+<p>W poniższym zadaniu wygenerujemy $\small n = 50$ obserwacji z rozkładu:</p>
+<ul>
+<li>$\small N(1,1)$,</li>
+<li>$\small N(4,1)$,</li>
+<li>$\small N(1,4)$.</li>
+</ul>
+```{r normalDist1, echo = FALSE, warning = FALSE, tidy = TRUE}
+normData1 <- rnorm(50, 1, 1)
+normData2 <- rnorm(50, 4, 1)
+normData3 <- rnorm(50, 1, 2)
+```
+<p>Teraz, dla każdej z tych obserwacji, obliczymy wartość estymatora parametru $\small \theta$ postaci:</p>
+$$ 
+\small \hat{\theta_1} = \bar{X} = \frac{X_1 + X_2 + \ldots + X_n}{n}, \\
+\small \hat{\theta_2} = Me\{X_1, \ldots , X_n \}, \\
+\small \hat{\theta_3} = \sum_{i=1}^{n}{w_iX_i}, \hspace{10px} \text{gdzie} \hspace{5px} w_i = \frac{2k + n - 1}{2n^2}, \\
+\small \hat{\theta_4} = \sum_{i=1}^{n}{w_iX_{i:n}}, 
+$$
+gdzie $\small X_{1:n} \leq \ldots \leq X_{n:n}$ są uporządkowanymi obserwacjami $\small X_1, \ldots , X_n ; \ \ w_i = \varphi\left( \Phi^{-1}(\frac{i-1}{n})\right) -  \varphi\left( \Phi^{-1}(\frac{i}{n})\right)$, gdzie $\small \varphi$ jest gęstością, a $\small \Phi$ dystrybuantą standardowego rozkładu normalnego. 
+ 
+<p>Dane przedstawimy w poniższej tabeli:</p>
+
+```{r estFun1, echo = FALSE, warning = FALSE, tidy = TRUE}
+estNorm1 <- function(normData) {
+  return(sum(normData)/50)
+}
+estNorm2 <- function(normData) {
+  return(median(normData))
+}
+seqNorm1 <- sapply(1:50, FUN = function(k){(2*k+50-1)/(2*50^2)})
+estNorm3 <- function(normData) {
+  return(sum(seqNorm1 * normData))
+}
+seqNorm2 <- sapply(1:50, FUN = function(i){dnorm(qnorm((i-1)/50)) - dnorm(qnorm(i/50))})
+estNorm4 <- function(normData) {
+  return(sum(seqNorm2 * sort(normData)))
+} 
+
+rows = c("$\\hat{\\theta_1}$", "$\\hat{\\theta_2}$", "$\\hat{\\theta_3}$", "$\\hat{\\theta_4}$")
+column1 <- c(estNorm1(normData1), estNorm2(normData1), estNorm3(normData1), estNorm4(normData1))
+column2 <- c(estNorm1(normData2), estNorm2(normData2), estNorm3(normData2), estNorm4(normData2))
+column3 <- c(estNorm1(normData3), estNorm2(normData3), estNorm3(normData3), estNorm4(normData3))
+table <- data.frame(column1, column2, column3)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$N(1,1)$", "$N(4,1)$", "$N(1,4)$"))
+```
+<p>Z uzyskanych liczb, nie jesteśmy w stanie wyciągnąć zbyt wiele użytecznych wniosków. Najbardziej rzucające się w oczy, jest estymowanie parametru $\small \theta$, estymatorem $\small \hat{\theta_4}$, którego wartości, są najbardziej rozbieżne od prawdziwej wartości $\small \theta$. Jest to spowodowane tym, że ciąg wag jaki dobraliśmy, nadaje największe znaczenie wyrazom, które są najbardziej ekstremalne. Warto też zwrócić uwagę na ostatnią kolumnę, z próbą z rozkładu $\small N(1,4)$. Ma ona największą wariancję, przez co w ogólności, wszystkie estymatory osiągały gorsze przybliżenia w porównaniu z pozostałymi rozkładami.</p>
+<p>Aby lepiej przyjrzeć się powyższym parametrom, wykonamy całe doświadczenie jeszcze $\small 10000$ razy, aby następnie, wykorzystując <em>Prawo Wielkich Liczb</em>, oszacować:</p>
+<ul>
+<li>$\small Var(T)$,</li>
+<li>$\small E \left[(T - \theta)^2 \right]$,</li>
+<li>$\small E \left[T - \theta \right]$.</li>
+</ul>
+<p>Gdzie $\small T$ jest statystyką która estymuje parametr $\small \theta$.</p>
+
+```{r testingEst1, echo = FALSE, warning = FALSE, tidy = TRUE}
+Estimators1Data1 <- sapply(1:10000, function(i){estNorm1(rnorm(50, 1, 1))})
+Estimators1Data2 <- sapply(1:10000, function(i){estNorm1(rnorm(50, 4, 1))})
+Estimators1Data3 <- sapply(1:10000, function(i){estNorm1(rnorm(50, 1, 2))})
+
+Estimators2Data1 <- sapply(1:10000, function(i){estNorm2(rnorm(50, 1, 1))})
+Estimators2Data2 <- sapply(1:10000, function(i){estNorm2(rnorm(50, 4, 1))})
+Estimators2Data3 <- sapply(1:10000, function(i){estNorm2(rnorm(50, 1, 2))})
+
+Estimators3Data1 <- sapply(1:10000, function(i){estNorm3(rnorm(50, 1, 1))})
+Estimators3Data2 <- sapply(1:10000, function(i){estNorm3(rnorm(50, 4, 1))})
+Estimators3Data3 <- sapply(1:10000, function(i){estNorm3(rnorm(50, 1, 2))})
+
+Estimators4Data1 <- sapply(1:10000, function(i){estNorm4(rnorm(50, 1, 1))})
+Estimators4Data2 <- sapply(1:10000, function(i){estNorm4(rnorm(50, 4, 1))})
+Estimators4Data3 <- sapply(1:10000, function(i){estNorm4(rnorm(50, 1, 2))})
+
+MSEEstimator <- function(data, theta) {
+  return(1/10000*sum((data - theta)^2))
+}
+
+BiasEst <- function(data, theta) {
+  return(1/10000*sum(data - theta))
+}
+
+```
+<h4>Testy dla $\small N(1,1)$:</h4>
+```{r testingEST1Tab1, echo = FALSE, warning = FALSE, tidy = TRUE}
+rows <- c("Wariancja", "MSE", "Obciążenie")
+column1 <- c(var(Estimators1Data1), MSEEstimator(Estimators1Data1, 1), BiasEst(Estimators1Data1, 1))
+column2 <- c(var(Estimators2Data1), MSEEstimator(Estimators2Data1, 1), BiasEst(Estimators2Data1, 1))
+column3 <- c(var(Estimators3Data1), MSEEstimator(Estimators3Data1, 1), BiasEst(Estimators3Data1, 1))
+column4 <- c(var(Estimators4Data1), MSEEstimator(Estimators4Data1, 1), BiasEst(Estimators4Data1, 1))
+table <- data.frame(column1, column2, column3, column4)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$\\hat{\\theta_1}$", "$\\hat{\\theta_2}$", "$\\hat{\\theta_3}$", "$\\hat{\\theta_4}$"))
+```
+
+<h4>Testy dla $\small N(4,1)$:</h4>
+```{r testingEST2Tab1, echo = FALSE, warning = FALSE, tidy = TRUE}
+rows <- c("Wariancja", "MSE", "Obciążenie")
+column1 <- c(var(Estimators1Data2), MSEEstimator(Estimators1Data2, 4), BiasEst(Estimators1Data2, 4))
+column2 <- c(var(Estimators2Data2), MSEEstimator(Estimators2Data2, 4), BiasEst(Estimators2Data2, 4))
+column3 <- c(var(Estimators3Data2), MSEEstimator(Estimators3Data2, 4), BiasEst(Estimators3Data2, 4))
+column4 <- c(var(Estimators4Data2),MSEEstimator(Estimators4Data2, 4), BiasEst(Estimators4Data2, 4))
+table <- data.frame(column1, column2, column3, column4)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$\\hat{\\theta_1}$", "$\\hat{\\theta_2}$", "$\\hat{\\theta_3}$", "$\\hat{\\theta_4}$"))
+```
+<h4>Testy dla $\small N(1,4)$:</h4>
+```{r testingEST3Tab1, echo = FALSE, warning = FALSE, tidy = TRUE}
+rows <- c("Wariancja", "MSE", "Obciążenie")
+column1 <- c(var(Estimators1Data3), MSEEstimator(Estimators1Data3, 1), BiasEst(Estimators1Data3, 1))
+column2 <- c(var(Estimators2Data3), MSEEstimator(Estimators2Data3, 1), BiasEst(Estimators2Data3, 1))
+column3 <- c(var(Estimators3Data3), MSEEstimator(Estimators3Data3, 1), BiasEst(Estimators3Data3, 1))
+column4 <- c(var(Estimators4Data3), MSEEstimator(Estimators4Data3, 1), BiasEst(Estimators4Data3, 1))
+table <- data.frame(column1, column2, column3, column4)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$\\hat{\\theta_1}$", "$\\hat{\\theta_2}$", "$\\hat{\\theta_3}$", "$\\hat{\\theta_4}$"))
+```
+<p>Podsumowując, powyższe tabele prezentują wyniki podobnych rzędów, gdzie najciekawsze wyniki uzyskaliśmy w ostatniej kolumnie, gdzie testowaliśmy estymator $\small \hat{\theta_4}$. Ponieważ jest on jako jedyny obciążonym estymatorem parametru $\small \theta$, stąd zgodnie z teorią dostajemy duże obciążenie. Warto też zwrócić uwagę, że wyniki spełniają z dużą dokładnością równanie $\small MSE(\hat{\theta}) = Var(\hat{\theta}) + Bias(\hat{\theta})^2$, co sugeruje, że nasze obliczenia są prawidłowe. Pierwsze trzy estymatory zdają się być najużyteczniejsze, ze względu na niską wariancję jak i obciążenie, co jest pożądane przy dobrych estymatorach. Choć zdecydowanie najmniejszą wariancję i obciążenie osiągamy przy <em>średniej próbkowej</em>, co zgadza się z teoretycznym faktem, że dla rozkładu normalnego, średnia próbkowa jest najefektywniejszym estymatorem parametru $\small \theta$.</p>
+
+<h2>Zadanie 2</h2>
+<p>Komenda <code>set.seed(k)</code> ustala ziarno losowe na <em>k</em>, co wpływa na algorytm losujący deterministycznie. Oznacza to, że użycie tych samych komend w tej samej kolejności, wygeneruje ten sam wynik za każdym razem. Oznacza to oczywiście utratę (pseudo)losowości, przez co wszelkie operacje losowe tracą sens. Można by uznać, że jest to zupełnie zbędna, a nawet szkodliwa funkcja. Ma ona jednak zastosowanie we wszelakim rodzaju testów. Poczynając od zwykłych testów jednostkowych, kończąc na testach algotymów losowych. Jest to też użyteczne przy symulowaniu, kiedy za każdym razem potrzebujemy tych samych warunków początkowych.</p>
+
+<h2>Zadanie 3</h2>
+<p>W celu znalezienia <em>estymatora największej wiarygodności</em>, szukamy maksimum funkcji największej wiarygodności $\small \hat{\theta}$. Takie maksimum będzie naszym estymatorem. W ogólności jest to proste zadanie z analizy, w którym wystarczy obliczyć odpowiednie pochodne i sprawdzić warunki na maksimum. Nie zawsze jednak ten proces jest wystarczający.</p>
+<p>Weźmy na przykład prostą próbę z rozkładu logistycznego $\small f(x;\theta)$. Wtedy, wykorzystując logarytm(dla ułatwienia rachunków) funkcji największej wiarygodności $\small \ell (\theta) = \sum_{i=1}^n{\log{f(x_i;\theta)}} = n\theta-n \overline{x}-2\sum_{i=1}^n{\log{(1+\exp{\{-(x_i-\theta)\}}})}$, znajdziemy estymator największej wiarygodności. Po obliczeniu pochodnej względem zmiennej $\small \theta$ i przyrównaniu jej do zera, dochodzimy do postaci, której nie da się już uprościć:</p>
+$$
+\small \sum_{i=1}^n{\frac{e^{-(x_i-\theta)}}{1 + e^{-(x_i-\theta)}}} = \frac{n}{2}.
+$$
+<p>Jednak okazuje się, że powyższe równanie posiada unikatowe rozwiązanie, które jest również punktem maksymalnym naszej wyjściowej funkcji $\small \ell(\theta)$. Posiadając takie informacje, możemy wyznaczyć rozwiązanie z dużą dokładnością, metodami numerycznymi, na przykład, za pomocą <em>metody Newtona</em>.</p>
+
+<h2>Zadanie 4</h2>
+<p>Metoda Newtona, pozwala na efektywne i dokładne wyznaczanie rozwiązania równania postaci $\small f(x) = 0$. W naszym kontekście, jest to $\small \ell'(\theta) = 0$. Aby zacząć, potrzebujemy startowego punktu $\small \theta_0$, który będzie względnie blisko naszego rozwiązania. Musimy się też upewnić, że na badanym przedziale, rozwiązanie jest jedyne. Wykorzystując następnie wzór:</p>
+$$
+\small \theta_1 =\theta_0 - \frac{\ell'(\theta_0)}{\ell''(\theta_0)},
+$$
+<p>wyznaczamy punkt przecięcia stycznej funkcji $\small \ell(\theta)$, w punkcie $\small \theta_0$ z osią $OX$. Powtarzając procedurę, dostajemy ciąg punktów $\small \{ \theta_n\}$, który potencjalnie zbiega do poszukiwanego rozwiązania. Trzeba mieć jednak na uwadze fakt, że nie zawsze ta procedura jest możliwa, jak i to, że może nie dawać prawidłowych wyników. Ważnym jest więc, aby po skończonej procedurze weryfikować, czy uzyskany punkt rzeczywiście jest bliski miejsca zerowego funkcji wyjściowej.</p>
+
+<h2>Zadanie 5</h2>
+<p>W poniższym zadaniu wygenerujemy $\small n = 50$ obserwacji z rozkładu logistycznego:</p>
+<ul>
+<li>$\small L(1,1)$,</li>
+<li>$\small L(4,1)$,</li>
+<li>$\small L(1,2)$.</li>
+</ul>
+```{r trial2, echo = FALSE, warning = FALSE, tidy = TRUE}
+LogistTrial1 <- rlogis(50, 1, 1)
+LogistTrial2 <- rlogis(50, 4, 1)
+LogistTrial3 <- rlogis(50, 1, 2)
+```
+<p>Następnie oszacujemy parametr przesunięcia $\small \theta$ metodą Newtona. W poniższej tabelce zaprezentujemy oszacowania:</p>
+```{r NewtonsMethod, echo = FALSE, warning = FALSE, tidy = TRUE}
+
+Newtons_method <- function(data, derivative, s_derivative, start_point = mean(data), s, i) {
+  best_est <- start_point
+  for(k in 1:i) {
+    best_est <- best_est - derivative(data, best_est, s) / s_derivative(data, best_est, s)
+  }
+  return(best_est)
+}
+```
+
+```{r logisticFunctions, echo = FALSE, warning = FALSE, tidy = TRUE}
+nexp <- function(x,t,s) return(exp(-(x-t)/s))
+first_logistic_derivative <- function(x, t, s) return(length(x)/s -2*sum(nexp(x,t,s)/(s*(1+nexp(x,t,s)))))
+second_logistic_derivative <- function(x, t, s) return(-2/s^2*sum(nexp(x,t,s)/(1+nexp(x,t,s))^2))
+```
+
+```{r Est_of_theta_1, echo = FALSE, warning = FALSE, tidy = TRUE}
+LogisticThetaEst1 <- Newtons_method(LogistTrial1, first_logistic_derivative, second_logistic_derivative, s = 1, i = 5)
+LogisticThetaEst2 <- Newtons_method(LogistTrial2, first_logistic_derivative, second_logistic_derivative, s = 1, i = 5)
+LogisticThetaEst3 <-Newtons_method(LogistTrial3, first_logistic_derivative, second_logistic_derivative, s = 2, i = 5)
+```
+
+```{r table_with_theta_1, echo = FALSE, warning = FALSE, tidy = TRUE}
+rows = c("$\\theta$")
+column1 <- c(LogisticThetaEst1)
+column2 <- c(LogisticThetaEst2)
+column3 <- c(LogisticThetaEst3)
+table <- data.frame(column1, column2, column3)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$L(1,1)$", "$L(4,1)$", "$L(1,2)$"))
+```
+<p>Do uzyskania powyższych wyników użyto pięciu kroków w algorytmie Newtona, aczkolwiek zazwyczaj wystarczy jednej bądź dwa. Jako punkt początkowy wybrano średnią, aby maksymalizować szansę zbieżności, ponieważ algorytm Newtona jest czuły na punkt początkowy i łatwo jest uzyskać rozbieżność bądź błędny wynik przy dużej rozbieżności między punktem początkowym i szukanym.</p>
+<p>Powtórzymy powyższy eksperyment $\small 10000$ razy, przy tej samiej liczbie kroków i punkcie startowym. Następnie wyznaczymy wariancję, błąd średniokwadratowy i obciążenie parametru $\small \theta$ w celu przeanalizowania, czy nasza metoda estymacji jest sensowna. W poniższej tabeli zaprezentujemy wyniki:</p>
+```{r data_for_tables_2, echo = FALSE, warning = FALSE, tidy = TRUE}
+LogisticTrial1Est <- sapply(1:10000, function(x) Newtons_method(rlogis(50, 1, 1), first_logistic_derivative, second_logistic_derivative, s = 1, i = 5))
+LogisticTrial2Est <- sapply(1:10000, function(x) Newtons_method(rlogis(50, 4, 1), first_logistic_derivative, second_logistic_derivative, s = 1, i = 5))
+LogisticTrial3Est <- sapply(1:10000, function(x) Newtons_method(rlogis(50, 1, 2), first_logistic_derivative, second_logistic_derivative, s = 2, i = 5))
+
+rows = c("Wariancja", "MSE", "Obciążenie")
+column1 <- c(var(LogisticTrial1Est), MSEEstimator(LogisticTrial1Est, 1), BiasEst(LogisticTrial1Est, 1))
+column2 <- c(var(LogisticTrial2Est), MSEEstimator(LogisticTrial2Est, 4), BiasEst(LogisticTrial2Est, 4))
+column3 <- c(var(LogisticTrial3Est), MSEEstimator(LogisticTrial3Est, 1), BiasEst(LogisticTrial3Est, 1))
+table <- data.frame(column1, column2, column3)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$L(1,1)$", "$L(4,1)$", "$L(1,2)$"))
+```
+<p>Jak można zauważyć uzyskaliśmy wyniki, które sugerują, że metoda estymacji parametru $\small \theta$, którą wybraliśmy, jest słuszna. Warto też zwrócić uwagę, że porównywalnie dobre wyniki otrzymujemy dla różnego doboru parametrów. Mamy trochę większą rozbieżność tylko w ostatniej próbie, gdzie skala jest równa dwa, choć jest to nadal bardzo satysfakcjonujący wynik.</p>
+<h2>Zadanie 6</h2>
+<p>W poniższym zadaniu wygenerujemy $\small n = 50$ obserwacji z rozkładu Cauchy'ego:</p>
+<ul>
+<li>$\small C(1,1)$,</li>
+<li>$\small C(4,1)$,</li>
+<li>$\small C(1,2)$.</li>
+</ul>
+```{r trial3, echo = FALSE, warning = FALSE, tidy = TRUE}
+CauchyTrial1 <- rcauchy(50, 1, 1)
+CauchyTrial2 <- rcauchy(50, 4, 1)
+CauchyTrial3 <- rcauchy(50, 1, 2)
+```
+<p>Następnie oszacujemy parametr $\small \theta$ metodą Newtona. W poniższej tabelce zaprezentujemy oszacowania:</p>
+```{r cauchyFunctions, echo = FALSE, warning = FALSE, tidy = TRUE}
+first_cauchy_derivative <- function(x, t, s) return(2*sum((x-t)/((x-t)^2 + s^2)))
+second_cauchy_derivative <- function(x, t, s) return(2*sum(((x-t)^2 - s^2)/(((x-t)^2 + s^2)^2)))
+```
+
+```{r Est_of_theta_2, echo = FALSE, warning = FALSE, tidy = TRUE}
+CauchyThetaEst1 <- Newtons_method(CauchyTrial1, first_cauchy_derivative, second_cauchy_derivative, s = 1, start_point = 1.1, i = 5)
+CauchyThetaEst2 <- Newtons_method(CauchyTrial2, first_cauchy_derivative, second_cauchy_derivative, s = 1, start_point = 4.1, i = 5)
+CauchyThetaEst3 <- Newtons_method(CauchyTrial3, first_cauchy_derivative, second_cauchy_derivative, s = 2, start_point = 1.1, i = 5)
+```
+
+```{r table_with_theta_2, echo = FALSE, warning = FALSE, tidy = TRUE}
+rows = c("$\\theta$")
+column1 <- c(CauchyThetaEst1)
+column2 <- c(CauchyThetaEst2)
+column3 <- c(CauchyThetaEst3)
+table <- data.frame(column1, column2, column3)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$C(1,1)$", "$C(4,1)$", "$C(1,2)$"))
+```
+<p>Do uzyskania powyższych wyników użyto pięciu kroków w algorytmie Newtona, aczkolwiek zazwyczaj wystarczy jednej bądź dwa. Jako punkt początkowy wybrano rzeczywisty parametr $\small \theta + 0.1$, aby maksymalizować szansę zbieżności, ponieważ rozkład Cauchy'ego nie posiada wartości oczekiwanej, więc wybranie średniej nie wpływa dobrze na zbieżność algorytmu Newtona, gdyż różni się ona bardzo, niezależnie od próby.</p>
+<p>Powtórzymy powyższy eksperyment $\small 10000$ razy, przy tej samiej liczbie kroków i punkcie startowym. Następnie wyznaczymy wariancję, błąd średniokwadratowy i obciążenie parametru $\small \theta$, w celu przeanalizowania, czy nasza metoda estymacji jest sensowna. W poniższej tabeli zaprezentujemy wyniki:</p>
+```{r data_for_tables_3, echo = FALSE, warning = FALSE, tidy = TRUE}
+CauchyTrial1Est <- sapply(1:10000, function(x) Newtons_method(rcauchy(50, 1, 1), first_cauchy_derivative, second_cauchy_derivative, s = 1, start_point = 1.1, i = 5))
+CauchyTrial2Est <- sapply(1:10000, function(x) Newtons_method(rcauchy(50, 4, 1), first_cauchy_derivative, second_cauchy_derivative, s = 1, start_point = 4.1,i = 5))
+CauchyTrial3Est <- sapply(1:10000, function(x) Newtons_method(rcauchy(50, 1, 2), first_cauchy_derivative, second_cauchy_derivative, s = 2, start_point = 1.1,i = 5))
+
+rows = c("Wariancja", "MSE", "Obciążenie")
+column1 <- c(var(CauchyTrial1Est), MSEEstimator(CauchyTrial1Est, 1), BiasEst(CauchyTrial1Est, 1))
+column2 <- c(var(CauchyTrial2Est), MSEEstimator(CauchyTrial2Est, 4), BiasEst(CauchyTrial2Est, 4))
+column3 <- c(var(CauchyTrial3Est), MSEEstimator(CauchyTrial3Est, 1), BiasEst(CauchyTrial3Est, 1))
+table <- data.frame(column1, column2, column3)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$C(1,1)$", "$C(4,1)$", "$C(1,2)$"))
+```
+<p>Wyniki które uzyskaliśmy są stosunkowo dobre, aczkolwiek jest to spowodowane tym, że dobrany punkt startowy w algorytmie Newtona, różni się od prawdziwej wartości parametru $\small \theta$ tylko o $\small 0.1$. Stąd nie jest to metoda, która w rzeczywistości jest użyteczna. Dla porównania zaprezentujemy teraz tabelę z wynikami, ale przy punkcie startowym $\small \theta + 0.5$ i pięciu krokach w algorytmie Newtona:</p>
+```{r data_for_tables_with_big_est, echo = FALSE, warning = FALSE, tidy = TRUE}
+CauchyTrial1Est <- sapply(1:10000, function(x) Newtons_method(rcauchy(50, 1, 1), first_cauchy_derivative, second_cauchy_derivative, s = 1, start_point = 1.5, i = 5))
+CauchyTrial2Est <- sapply(1:10000, function(x) Newtons_method(rcauchy(50, 4, 1), first_cauchy_derivative, second_cauchy_derivative, s = 1, start_point = 4.5,i = 5))
+CauchyTrial3Est <- sapply(1:10000, function(x) Newtons_method(rcauchy(50, 1, 2), first_cauchy_derivative, second_cauchy_derivative, s = 2, start_point = 1.5,i = 5))
+
+rows = c("Wariancja", "MSE", "Obciążenie")
+column1 <- c(var(CauchyTrial1Est), MSEEstimator(CauchyTrial1Est, 1), BiasEst(CauchyTrial1Est, 1))
+column2 <- c(var(CauchyTrial2Est), MSEEstimator(CauchyTrial2Est, 4), BiasEst(CauchyTrial2Est, 4))
+column3 <- c(var(CauchyTrial3Est), MSEEstimator(CauchyTrial3Est, 1), BiasEst(CauchyTrial3Est, 1))
+table <- data.frame(column1, column2, column3)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$C(1,1)$", "$C(4,1)$", "$C(1,2)$"))
+```
+<p>Jak widać, zmiana jaką dokonaliśmy jest mała, bo tylko przesuneliśmy punkt startowy o $\small 0.4$, w porównaniu z poprzednim eksperymentem, a uzyskaliśmy wyniki, które nie są jakkolwiek sensowne.</p>
+
+
+
+<h2>Zadanie 7</h2>
+<p>W poniższym zadaniu powtórzymy eksperymenty numeryczne z zadań 1, 5 oraz 6, ale dla $\small n = 20$ i $\small n = 100$, w celu przeanalizowania, czy zmiana wielkości próby znacznie wpływa na uzyskane wyniki.</p>
+<h3>Eksperyment z zadania 1 dla $\small n = 20$</h3>
+```{r 20estFun1, echo = FALSE, warning = FALSE, tidy = TRUE}
+normData1 <- rnorm(20, 1, 1)
+normData2 <- rnorm(20, 4, 1)
+normData3 <- rnorm(20, 1, 2)
+
+estNorm1 <- function(normData) {
+  return(sum(normData)/20)
+}
+estNorm2 <- function(normData) {
+  return(median(normData))
+}
+seqNorm1 <- sapply(1:20, FUN = function(k){(2*k+20-1)/(2*20^2)})
+estNorm3 <- function(normData) {
+  return(sum(seqNorm1 * normData))
+}
+seqNorm2 <- sapply(1:20, FUN = function(i){dnorm(qnorm((i-1)/20)) - dnorm(qnorm(i/20))})
+estNorm4 <- function(normData) {
+  return(sum(seqNorm2 * sort(normData)))
+} 
+
+rows = c("$\\hat{\\theta_1}$", "$\\hat{\\theta_2}$", "$\\hat{\\theta_3}$", "$\\hat{\\theta_4}$")
+column1 <- c(estNorm1(normData1), estNorm2(normData1), estNorm3(normData1), estNorm4(normData1))
+column2 <- c(estNorm1(normData2), estNorm2(normData2), estNorm3(normData2), estNorm4(normData2))
+column3 <- c(estNorm1(normData3), estNorm2(normData3), estNorm3(normData3), estNorm4(normData3))
+table <- data.frame(column1, column2, column3)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$N(1,1)$", "$N(4,1)$", "$N(1,4)$"))
+```
+
+<p>Można szybko dostrzec, że wyniki które uzyskaliśmy w porównaniu z wynikami przy $\small n = 50$ są gorsze. Nie powinno nas to dziwić, ponieważ znaczne zmniejszenie wielkości próby daje gorsze wyniki. Zobaczymy czy jest to analogiczne przy testowaniu estymatorów:</p>
+
+```{r 20estimators, echo = FALSE, tidy = TRUE, warning = FALSE}
+Estimators1Data1 <- sapply(1:10000, function(i){estNorm1(rnorm(20, 1, 1))})
+Estimators1Data2 <- sapply(1:10000, function(i){estNorm1(rnorm(20, 4, 1))})
+Estimators1Data3 <- sapply(1:10000, function(i){estNorm1(rnorm(20, 1, 2))})
+
+Estimators2Data1 <- sapply(1:10000, function(i){estNorm2(rnorm(20, 1, 1))})
+Estimators2Data2 <- sapply(1:10000, function(i){estNorm2(rnorm(20, 4, 1))})
+Estimators2Data3 <- sapply(1:10000, function(i){estNorm2(rnorm(20, 1, 2))})
+
+Estimators3Data1 <- sapply(1:10000, function(i){estNorm3(rnorm(20, 1, 1))})
+Estimators3Data2 <- sapply(1:10000, function(i){estNorm3(rnorm(20, 4, 1))})
+Estimators3Data3 <- sapply(1:10000, function(i){estNorm3(rnorm(20, 1, 2))})
+
+Estimators4Data1 <- sapply(1:10000, function(i){estNorm4(rnorm(20, 1, 1))})
+Estimators4Data2 <- sapply(1:10000, function(i){estNorm4(rnorm(20, 4, 1))})
+Estimators4Data3 <- sapply(1:10000, function(i){estNorm4(rnorm(20, 1, 2))})
+```
+<h4>Testy dla $\small N(1,1)$:</h4>
+```{r 20testingEST1Tab1, echo = FALSE, warning = FALSE, tidy = TRUE}
+rows <- c("Wariancja", "MSE", "Obciążenie")
+column1 <- c(var(Estimators1Data1), MSEEstimator(Estimators1Data1, 1), BiasEst(Estimators1Data1, 1))
+column2 <- c(var(Estimators2Data1), MSEEstimator(Estimators2Data1, 1), BiasEst(Estimators2Data1, 1))
+column3 <- c(var(Estimators3Data1), MSEEstimator(Estimators3Data1, 1), BiasEst(Estimators3Data1, 1))
+column4 <- c(var(Estimators4Data1), MSEEstimator(Estimators4Data1, 1), BiasEst(Estimators4Data1, 1))
+table <- data.frame(column1, column2, column3, column4)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$\\hat{\\theta_1}$", "$\\hat{\\theta_2}$", "$\\hat{\\theta_3}$", "$\\hat{\\theta_4}$"))
+```
+
+<h4>Testy dla $\small N(4,1)$:</h4>
+```{r 20testingEST2Tab1, echo = FALSE, warning = FALSE, tidy = TRUE}
+rows <- c("Wariancja", "MSE", "Obciążenie")
+column1 <- c(var(Estimators1Data2), MSEEstimator(Estimators1Data2, 4), BiasEst(Estimators1Data2, 4))
+column2 <- c(var(Estimators2Data2), MSEEstimator(Estimators2Data2, 4), BiasEst(Estimators2Data2, 4))
+column3 <- c(var(Estimators3Data2), MSEEstimator(Estimators3Data2, 4), BiasEst(Estimators3Data2, 4))
+column4 <- c(var(Estimators4Data2),MSEEstimator(Estimators4Data2, 4), BiasEst(Estimators4Data2, 4))
+table <- data.frame(column1, column2, column3, column4)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$\\hat{\\theta_1}$", "$\\hat{\\theta_2}$", "$\\hat{\\theta_3}$", "$\\hat{\\theta_4}$"))
+```
+<h4>Testy dla $\small N(1,4)$:</h4>
+```{r 20testingEST3Tab1, echo = FALSE, warning = FALSE, tidy = TRUE}
+rows <- c("Wariancja", "MSE", "Obciążenie")
+column1 <- c(var(Estimators1Data3), MSEEstimator(Estimators1Data3, 1), BiasEst(Estimators1Data3, 1))
+column2 <- c(var(Estimators2Data3), MSEEstimator(Estimators2Data3, 1), BiasEst(Estimators2Data3, 1))
+column3 <- c(var(Estimators3Data3), MSEEstimator(Estimators3Data3, 1), BiasEst(Estimators3Data3, 1))
+column4 <- c(var(Estimators4Data3), MSEEstimator(Estimators4Data3, 1), BiasEst(Estimators4Data3, 1))
+table <- data.frame(column1, column2, column3, column4)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$\\hat{\\theta_1}$", "$\\hat{\\theta_2}$", "$\\hat{\\theta_3}$", "$\\hat{\\theta_4}$"))
+```
+
+<p>Wyniki jakie uzyskaliśmy są rzeczywiście gorsze, aczkolwiek nie są one na tyle złe by uznać, że próba wielkości $\small 20$  zaburza estymowanie parametru $\theta$ w tym szczególnym przypadku.</p>
+
+<h3>Eksperyment z zadania 1 dla $\small n = 100$</h3>
+```{r 100estFun1, echo = FALSE, warning = FALSE, tidy = TRUE}
+normData1 <- rnorm(100, 1, 1)
+normData2 <- rnorm(100, 4, 1)
+normData3 <- rnorm(100, 1, 2)
+
+estNorm1 <- function(normData) {
+  return(sum(normData)/100)
+}
+estNorm2 <- function(normData) {
+  return(median(normData))
+}
+seqNorm1 <- sapply(1:100, FUN = function(k){(2*k+100-1)/(2*100^2)})
+estNorm3 <- function(normData) {
+  return(sum(seqNorm1 * normData))
+}
+seqNorm2 <- sapply(1:100, FUN = function(i){dnorm(qnorm((i-1)/100)) - dnorm(qnorm(i/100))})
+estNorm4 <- function(normData) {
+  return(sum(seqNorm2 * sort(normData)))
+} 
+
+rows = c("$\\hat{\\theta_1}$", "$\\hat{\\theta_2}$", "$\\hat{\\theta_3}$", "$\\hat{\\theta_4}$")
+column1 <- c(estNorm1(normData1), estNorm2(normData1), estNorm3(normData1), estNorm4(normData1))
+column2 <- c(estNorm1(normData2), estNorm2(normData2), estNorm3(normData2), estNorm4(normData2))
+column3 <- c(estNorm1(normData3), estNorm2(normData3), estNorm3(normData3), estNorm4(normData3))
+table <- data.frame(column1, column2, column3)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$N(1,1)$", "$N(4,1)$", "$N(1,4)$"))
+```
+
+<p>Jak moglibyśmy się spodziewać, wyniki jakie uzyskaliśmy są znacznie lepsze, poza estymatorem $\small \hat{\theta_4}$, który nawet nie zbliża się do średniej w przypadku próby z rozkładu $\small N(4,1)$.</p>
+
+```{r 100estimators, echo = FALSE, tidy = TRUE, warning = FALSE}
+Estimators1Data1 <- sapply(1:10000, function(i){estNorm1(rnorm(100, 1, 1))})
+Estimators1Data2 <- sapply(1:10000, function(i){estNorm1(rnorm(100, 4, 1))})
+Estimators1Data3 <- sapply(1:10000, function(i){estNorm1(rnorm(100, 1, 2))})
+
+Estimators2Data1 <- sapply(1:10000, function(i){estNorm2(rnorm(100, 1, 1))})
+Estimators2Data2 <- sapply(1:10000, function(i){estNorm2(rnorm(100, 4, 1))})
+Estimators2Data3 <- sapply(1:10000, function(i){estNorm2(rnorm(100, 1, 2))})
+
+Estimators3Data1 <- sapply(1:10000, function(i){estNorm3(rnorm(100, 1, 1))})
+Estimators3Data2 <- sapply(1:10000, function(i){estNorm3(rnorm(100, 4, 1))})
+Estimators3Data3 <- sapply(1:10000, function(i){estNorm3(rnorm(100, 1, 2))})
+
+Estimators4Data1 <- sapply(1:10000, function(i){estNorm4(rnorm(100, 1, 1))})
+Estimators4Data2 <- sapply(1:10000, function(i){estNorm4(rnorm(100, 4, 1))})
+Estimators4Data3 <- sapply(1:10000, function(i){estNorm4(rnorm(100, 1, 2))})
+```
+<h4>Testy dla $\small N(1,1)$:</h4>
+```{r 100testingEST1Tab1, echo = FALSE, warning = FALSE, tidy = TRUE}
+rows <- c("Wariancja", "MSE", "Obciążenie")
+column1 <- c(var(Estimators1Data1), MSEEstimator(Estimators1Data1, 1), BiasEst(Estimators1Data1, 1))
+column2 <- c(var(Estimators2Data1), MSEEstimator(Estimators2Data1, 1), BiasEst(Estimators2Data1, 1))
+column3 <- c(var(Estimators3Data1), MSEEstimator(Estimators3Data1, 1), BiasEst(Estimators3Data1, 1))
+column4 <- c(var(Estimators4Data1), MSEEstimator(Estimators4Data1, 1), BiasEst(Estimators4Data1, 1))
+table <- data.frame(column1, column2, column3, column4)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$\\hat{\\theta_1}$", "$\\hat{\\theta_2}$", "$\\hat{\\theta_3}$", "$\\hat{\\theta_4}$"))
+```
+
+<h4>Testy dla $\small N(4,1)$:</h4>
+```{r 100testingEST2Tab1, echo = FALSE, warning = FALSE, tidy = TRUE}
+rows <- c("Wariancja", "MSE", "Obciążenie")
+column1 <- c(var(Estimators1Data2), MSEEstimator(Estimators1Data2, 4), BiasEst(Estimators1Data2, 4))
+column2 <- c(var(Estimators2Data2), MSEEstimator(Estimators2Data2, 4), BiasEst(Estimators2Data2, 4))
+column3 <- c(var(Estimators3Data2), MSEEstimator(Estimators3Data2, 4), BiasEst(Estimators3Data2, 4))
+column4 <- c(var(Estimators4Data2),MSEEstimator(Estimators4Data2, 4), BiasEst(Estimators4Data2, 4))
+table <- data.frame(column1, column2, column3, column4)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$\\hat{\\theta_1}$", "$\\hat{\\theta_2}$", "$\\hat{\\theta_3}$", "$\\hat{\\theta_4}$"))
+```
+<h4>Testy dla $\small N(1,4)$:</h4>
+```{r 100testingEST3Tab1, echo = FALSE, warning = FALSE, tidy = TRUE}
+rows <- c("Wariancja", "MSE", "Obciążenie")
+column1 <- c(var(Estimators1Data3), MSEEstimator(Estimators1Data3, 1), BiasEst(Estimators1Data3, 1))
+column2 <- c(var(Estimators2Data3), MSEEstimator(Estimators2Data3, 1), BiasEst(Estimators2Data3, 1))
+column3 <- c(var(Estimators3Data3), MSEEstimator(Estimators3Data3, 1), BiasEst(Estimators3Data3, 1))
+column4 <- c(var(Estimators4Data3), MSEEstimator(Estimators4Data3, 1), BiasEst(Estimators4Data3, 1))
+table <- data.frame(column1, column2, column3, column4)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$\\hat{\\theta_1}$", "$\\hat{\\theta_2}$", "$\\hat{\\theta_3}$", "$\\hat{\\theta_4}$"))
+```
+
+<p>Przy testowaniu estymatora możemy zaobserwować, że rzeczywiście w ogólności estymator $\small \hat{\theta_4}$, nie poprawia swojej dokładności, to znaczy obciążenie jest tak duże jak przy $\small n = 50$. Pozostałe estymatory widocznie poprawiły wyniki.</p>
+
+<h3>Eksperyment z zadania 5 dla $\small n = 20$</h3>
+```{r 20table_with_theta_1, echo = FALSE, warning = FALSE, tidy = TRUE}
+LogisticThetaEst1 <- Newtons_method(rlogis(20, 1, 1), first_logistic_derivative, second_logistic_derivative, s = 1, i = 5)
+LogisticThetaEst2 <- Newtons_method(rlogis(20, 4, 1), first_logistic_derivative, second_logistic_derivative, s = 1, i = 5)
+LogisticThetaEst3 <-Newtons_method(rlogis(20, 1, 2), first_logistic_derivative, second_logistic_derivative, s = 2, i = 5)
+rows = c("$\\theta$")
+column1 <- c(LogisticThetaEst1)
+column2 <- c(LogisticThetaEst2)
+column3 <- c(LogisticThetaEst3)
+table <- data.frame(column1, column2, column3)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$L(1,1)$", "$L(4,1)$", "$L(1,2)$"))
+```
+
+```{r 20data_for_tables_2, echo = FALSE, warning = FALSE, tidy = TRUE}
+LogisticTrial1Est <- sapply(1:10000, function(x) Newtons_method(rlogis(20, 1, 1), first_logistic_derivative, second_logistic_derivative, s = 1, i = 5))
+LogisticTrial2Est <- sapply(1:10000, function(x) Newtons_method(rlogis(20, 4, 1), first_logistic_derivative, second_logistic_derivative, s = 1, i = 5))
+LogisticTrial3Est <- sapply(1:10000, function(x) Newtons_method(rlogis(20, 1, 2), first_logistic_derivative, second_logistic_derivative, s = 2, i = 5))
+
+rows = c("Wariancja", "MSE", "Obciążenie")
+column1 <- c(var(LogisticTrial1Est), MSEEstimator(LogisticTrial1Est, 1), BiasEst(LogisticTrial1Est, 1))
+column2 <- c(var(LogisticTrial2Est), MSEEstimator(LogisticTrial2Est, 4), BiasEst(LogisticTrial2Est, 4))
+column3 <- c(var(LogisticTrial3Est), MSEEstimator(LogisticTrial3Est, 1), BiasEst(LogisticTrial3Est, 1))
+table <- data.frame(column1, column2, column3)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$L(1,1)$", "$L(4,1)$", "$L(1,2)$"))
+```
+<p>Wyniki jakie uzyskaliśmy w powyższych dwóch tabelach są widocznie gorsze od tych, jakie uzyskaliśmy dla próby przy $\small n = 50$, przez co taki rozmiar próby dla tego rozkładu zdaje się nie wystarczać do estymowania parametru $\small \theta$.</p>
+
+<h3>Eksperyment z zadania 5 dla $\small n = 100$</h3>
+```{r 100table_with_theta_1, echo = FALSE, warning = FALSE, tidy = TRUE}
+LogisticThetaEst1 <- Newtons_method(rlogis(100, 1, 1), first_logistic_derivative, second_logistic_derivative, s = 1, i = 5)
+LogisticThetaEst2 <- Newtons_method(rlogis(100, 4, 1), first_logistic_derivative, second_logistic_derivative, s = 1, i = 5)
+LogisticThetaEst3 <-Newtons_method(rlogis(100, 1, 2), first_logistic_derivative, second_logistic_derivative, s = 2, i = 5)
+rows = c("$\\theta$")
+column1 <- c(LogisticThetaEst1)
+column2 <- c(LogisticThetaEst2)
+column3 <- c(LogisticThetaEst3)
+table <- data.frame(column1, column2, column3)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$L(1,1)$", "$L(4,1)$", "$L(1,2)$"))
+```
+
+```{r 100data_for_tables_2, echo = FALSE, warning = FALSE, tidy = TRUE}
+LogisticTrial1Est <- sapply(1:10000, function(x) Newtons_method(rlogis(100, 1, 1), first_logistic_derivative, second_logistic_derivative, s = 1, i = 5))
+LogisticTrial2Est <- sapply(1:10000, function(x) Newtons_method(rlogis(100, 4, 1), first_logistic_derivative, second_logistic_derivative, s = 1, i = 5))
+LogisticTrial3Est <- sapply(1:10000, function(x) Newtons_method(rlogis(100, 1, 2), first_logistic_derivative, second_logistic_derivative, s = 2, i = 5))
+
+rows = c("Wariancja", "MSE", "Obciążenie")
+column1 <- c(var(LogisticTrial1Est), MSEEstimator(LogisticTrial1Est, 1), BiasEst(LogisticTrial1Est, 1))
+column2 <- c(var(LogisticTrial2Est), MSEEstimator(LogisticTrial2Est, 4), BiasEst(LogisticTrial2Est, 4))
+column3 <- c(var(LogisticTrial3Est), MSEEstimator(LogisticTrial3Est, 1), BiasEst(LogisticTrial3Est, 1))
+table <- data.frame(column1, column2, column3)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$L(1,1)$", "$L(4,1)$", "$L(1,2)$"))
+```
+<p>Uzyskane wyniki przy próbie rozmiaru $\small n = 100$, zdają się dawać znacznie lepsze szacowania, choć wyniki jakie uzyskaliśmy przy próbie 50-elementowej nie były złe do szacowania parametru $\small \theta$.</p>
+
+<h3>Eksperyment z zadania 6 dla $\small n = 20$</h3>
+
+```{r 20table_with_theta_2, echo = FALSE, warning = FALSE, tidy = TRUE}
+CauchyThetaEst1 <- Newtons_method(rcauchy(20, 1, 1), first_cauchy_derivative, second_cauchy_derivative, s = 1, start_point = 1.1, i = 5)
+CauchyThetaEst2 <- Newtons_method(rcauchy(20, 4, 1), first_cauchy_derivative, second_cauchy_derivative, s = 1, start_point = 4.1, i = 5)
+CauchyThetaEst3 <- Newtons_method(rcauchy(20, 1, 2), first_cauchy_derivative, second_cauchy_derivative, s = 2, start_point = 1.1, i = 5)
+rows = c("$\\theta$")
+column1 <- c(CauchyThetaEst1)
+column2 <- c(CauchyThetaEst2)
+column3 <- c(CauchyThetaEst3)
+table <- data.frame(column1, column2, column3)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$C(1,1)$", "$C(4,1)$", "$C(1,2)$"))
+```
+
+```{r 20data_for_tables_3, echo = FALSE, warning = FALSE, tidy = TRUE}
+CauchyTrial1Est <- sapply(1:10000, function(x) Newtons_method(rcauchy(20, 1, 1), first_cauchy_derivative, second_cauchy_derivative, s = 1, start_point = 1.1, i = 5))
+CauchyTrial2Est <- sapply(1:10000, function(x) Newtons_method(rcauchy(20, 4, 1), first_cauchy_derivative, second_cauchy_derivative, s = 1, start_point = 4.1,i = 5))
+CauchyTrial3Est <- sapply(1:10000, function(x) Newtons_method(rcauchy(20, 1, 2), first_cauchy_derivative, second_cauchy_derivative, s = 2, start_point = 1.1,i = 5))
+
+rows = c("Wariancja", "MSE", "Obciążenie")
+column1 <- c(var(CauchyTrial1Est), MSEEstimator(CauchyTrial1Est, 1), BiasEst(CauchyTrial1Est, 1))
+column2 <- c(var(CauchyTrial2Est), MSEEstimator(CauchyTrial2Est, 4), BiasEst(CauchyTrial2Est, 4))
+column3 <- c(var(CauchyTrial3Est), MSEEstimator(CauchyTrial3Est, 1), BiasEst(CauchyTrial3Est, 1))
+table <- data.frame(column1, column2, column3)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$C(1,1)$", "$C(4,1)$", "$C(1,2)$"))
+```
+
+<p>Zmniejszenie próby do $\small n = 20$ znacznie wpłynęło na estymowanie parametru $\small \theta$ w taki sposób, że stało się ono już zupełnie bezsensowne pomimo ustalenia punktu początkowego na $\small \theta + 0.1$ i ilości iteracji na pięć. W poniższej tabelce mamy sytuację dla punktu początkowego równego $\small \theta + 0.5$ i ilości iteracji równej 5, przy którym uzyskujemy jeszcze gorsze statystyki:</p>
+
+```{r 20data_for_tables_with_big_est, echo = FALSE, warning = FALSE, tidy = TRUE}
+CauchyTrial1Est <- sapply(1:10000, function(x) Newtons_method(rcauchy(20, 1, 1), first_cauchy_derivative, second_cauchy_derivative, s = 1, start_point = 1.5, i = 5))
+CauchyTrial2Est <- sapply(1:10000, function(x) Newtons_method(rcauchy(20, 4, 1), first_cauchy_derivative, second_cauchy_derivative, s = 1, start_point = 4.5,i = 5))
+CauchyTrial3Est <- sapply(1:10000, function(x) Newtons_method(rcauchy(20, 1, 2), first_cauchy_derivative, second_cauchy_derivative, s = 2, start_point = 1.5,i = 5))
+
+rows = c("Wariancja", "MSE", "Obciążenie")
+column1 <- c(var(CauchyTrial1Est), MSEEstimator(CauchyTrial1Est, 1), BiasEst(CauchyTrial1Est, 1))
+column2 <- c(var(CauchyTrial2Est), MSEEstimator(CauchyTrial2Est, 4), BiasEst(CauchyTrial2Est, 4))
+column3 <- c(var(CauchyTrial3Est), MSEEstimator(CauchyTrial3Est, 1), BiasEst(CauchyTrial3Est, 1))
+table <- data.frame(column1, column2, column3)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$C(1,1)$", "$C(4,1)$", "$C(1,2)$"))
+```
+
+<h3>Eksperyment z zadania 6 dla $\small n = 100$</h3>
+
+```{r 100table_with_theta_2, echo = FALSE, warning = FALSE, tidy = TRUE}
+CauchyThetaEst1 <- Newtons_method(rcauchy(100, 1, 1), first_cauchy_derivative, second_cauchy_derivative, s = 1, start_point = 1.1, i = 5)
+CauchyThetaEst2 <- Newtons_method(rcauchy(100, 4, 1), first_cauchy_derivative, second_cauchy_derivative, s = 1, start_point = 4.1, i = 5)
+CauchyThetaEst3 <- Newtons_method(rcauchy(100, 1, 2), first_cauchy_derivative, second_cauchy_derivative, s = 2, start_point = 1.1, i = 5)
+rows = c("$\\theta$")
+column1 <- c(CauchyThetaEst1)
+column2 <- c(CauchyThetaEst2)
+column3 <- c(CauchyThetaEst3)
+table <- data.frame(column1, column2, column3)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$C(1,1)$", "$C(4,1)$", "$C(1,2)$"))
+```
+
+```{r 100data_for_tables_3, echo = FALSE, warning = FALSE, tidy = TRUE}
+CauchyTrial1Est <- sapply(1:10000, function(x) Newtons_method(rcauchy(100, 1, 1), first_cauchy_derivative, second_cauchy_derivative, s = 1, start_point = 1.1, i = 5))
+CauchyTrial2Est <- sapply(1:10000, function(x) Newtons_method(rcauchy(100, 4, 1), first_cauchy_derivative, second_cauchy_derivative, s = 1, start_point = 4.1,i = 5))
+CauchyTrial3Est <- sapply(1:10000, function(x) Newtons_method(rcauchy(100, 1, 2), first_cauchy_derivative, second_cauchy_derivative, s = 2, start_point = 1.1,i = 5))
+
+rows = c("Wariancja", "MSE", "Obciążenie")
+column1 <- c(var(CauchyTrial1Est), MSEEstimator(CauchyTrial1Est, 1), BiasEst(CauchyTrial1Est, 1))
+column2 <- c(var(CauchyTrial2Est), MSEEstimator(CauchyTrial2Est, 4), BiasEst(CauchyTrial2Est, 4))
+column3 <- c(var(CauchyTrial3Est), MSEEstimator(CauchyTrial3Est, 1), BiasEst(CauchyTrial3Est, 1))
+table <- data.frame(column1, column2, column3)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$C(1,1)$", "$C(4,1)$", "$C(1,2)$"))
+```
+
+<p>Dla próby rozmiaru $\small n = 100$ uzyskujemy znacznie lepsze wyniki przy punkcie początkowym $\small \theta + 0.1$, stąd też można oczekiwać, że przy punkcie początkowym $\small \theta + 0.5$ uzyskamy lepsze wyniki.</p>
+
+```{r 100data_for_tables_with_big_est, echo = FALSE, warning = FALSE, tidy = TRUE}
+CauchyTrial1Est <- sapply(1:10000, function(x) Newtons_method(rcauchy(100, 1, 1), first_cauchy_derivative, second_cauchy_derivative, s = 1, start_point = 1.5, i = 5))
+CauchyTrial2Est <- sapply(1:10000, function(x) Newtons_method(rcauchy(100, 4, 1), first_cauchy_derivative, second_cauchy_derivative, s = 1, start_point = 4.5,i = 5))
+CauchyTrial3Est <- sapply(1:10000, function(x) Newtons_method(rcauchy(100, 1, 2), first_cauchy_derivative, second_cauchy_derivative, s = 2, start_point = 1.5,i = 5))
+
+rows = c("Wariancja", "MSE", "Obciążenie")
+column1 <- c(var(CauchyTrial1Est), MSEEstimator(CauchyTrial1Est, 1), BiasEst(CauchyTrial1Est, 1))
+column2 <- c(var(CauchyTrial2Est), MSEEstimator(CauchyTrial2Est, 4), BiasEst(CauchyTrial2Est, 4))
+column3 <- c(var(CauchyTrial3Est), MSEEstimator(CauchyTrial3Est, 1), BiasEst(CauchyTrial3Est, 1))
+table <- data.frame(column1, column2, column3)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$C(1,1)$", "$C(4,1)$", "$C(1,2)$"))
+```
+<p>Rzeczywiście wyniki jakie uzyskaliśmy dają nam sensowne wyniki, dzięki czemu metoda Newtona okazuje się znacznie użyteczniejsza wraz ze wzrostem rozmiaru próby dla rozkładu Cauchy'ego.</p>
+

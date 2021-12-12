@@ -1,0 +1,690 @@
+---
+title: "Raport 2"
+author: "Piotr Wójcik"
+date: "1/11/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(LaplacesDemon)
+knitr::opts_chunk$set(echo = TRUE)
+options(scipen=999)
+```
+
+```{r generatingFun, echo = FALSE, warning = FALSE, tidy = TRUE}
+
+generate <- function(trial_fun, trial_fun_parameters = list(), mle = NULL, mle_parameters = c(), theta = 0) {
+
+  trial1 <- do.call(trial_fun, trial_fun_parameters)
+  if(length(mle_parameters) != 0) trial_est <- do.call(mle, list(c(trial1), mle_parameters))
+  else trial_est <- mle(trial1)
+
+  if(length(mle_parameters) != 0) trial10000_est <- sapply(1:10000, function(x) do.call(mle, list(c(do.call(trial_fun, trial_fun_parameters)), mle_parameters)))
+  else trial10000_est <- sapply(1:10000, function(x) mle(do.call(trial_fun, trial_fun_parameters)))
+  bias <- 1/10000*sum(trial10000_est - theta)
+  MSE <- 1/10000*sum((trial10000_est - theta)^2)
+  variance <- var(trial10000_est)
+  
+  data <- list(trial1 = c(trial1), trial_est = c(trial_est), trial10000_est = c(trial10000_est), bias = bias, MSE = MSE, variance = variance, theta = theta)
+  return(data)
+}
+```
+
+<font size="3">
+<p>W poniższym dokumencie będę prezentował zadania z drugiej listy z przedmiotu <em>Statystyka</em> wykładanego na <span style="white-space: nowrap; font-style: italic;">Uniwersytecie Wrocławskim</span> w roku akademickim 2021/2022 w semestrze zimowym.</p>
+
+<h2>Zadanie 1</h2>
+<p>Wygenerujemy $\small n = 50$ obserwacji z rozkładu dwumianowego $\small b(5, p)$, gdzie:</p>
+<ul>
+<li>$\small p = 0.1$,</li>
+<li>$\small p = 0.3$,</li>
+<li>$\small p = 0.5$,</li>
+<li>$\small p = 0.7$,</li>
+<li>$\small p = 0.9$.</li>
+</ul>
+
+```{r e1data, echo = FALSE, tidy = TRUE, warning = FALSE}
+mle1 <- function(x) {
+  return(10*(sum(x)/(length(x)*5))^3 - 15*(sum(x)/(length(x)*5))^4 + 6*(sum(x)/(length(x)*5))^5)
+}
+binomial_data_1 <- generate(rbinom, list(50, 5, 0.1), mle1, theta = 0.00856)
+binomial_data_2 <- generate(rbinom, list(50, 5, 0.3), mle1, theta = 0.16308)
+binomial_data_3 <- generate(rbinom, list(50, 5, 0.5), mle1, theta = 0.5)
+binomial_data_4 <- generate(rbinom, list(50, 5, 0.7), mle1, theta = 0.83692)
+binomial_data_5 <- generate(rbinom, list(50, 5, 0.9), mle1, theta = 0.99144)
+```
+<p>Na ich podstawie wyznaczymy estymator największej wiarygodności wielkości $\small P(X \geq 3)$, gdzie $\small X \sim b(5, p)$.</p>
+<p>W poniższej tabeli zaprezentujemy wyniki:</p>
+```{r table1_ex1, echo = FALSE, tidy = TRUE, warning = FALSE}
+rows = c("$\\hat{P}(X \\geq 3)$", "$P(X \\geq 3)$")
+column1 <- c(binomial_data_1$trial_est, binomial_data_1$theta)
+column2 <- c(binomial_data_2$trial_est, binomial_data_2$theta)
+column3 <- c(binomial_data_3$trial_est, binomial_data_3$theta)
+column4 <- c(binomial_data_4$trial_est, binomial_data_4$theta)
+column5 <- c(binomial_data_5$trial_est, binomial_data_5$theta)
+table <- data.frame(column1, column2, column3, column4, column5)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$b(5,0.1)$", "$b(5,0.3)$", "$b(5,0.5)$", "$b(5,0.7)$", "$b(5,0.9)$"))
+```
+<p>Od razu widać, że estymacja jaką wybraliśmy dobrze przybliża prawdziwy parametr. Sprawdzimy teraz dokładniej, jak dobry jest nasz estymator. W tym celu wykonamy powyższe doświadczenie jeszcze $\small 10 000$ razy, by następnie wyliczyć błąd średniokwadratowy, wariancję oraz obciążenie naszego estymatora.</p>
+<p>Zbiorcze dane zaprezentujemy w poniższej tabeli:</p>
+```{r table2_ex1, echo = FALSE, warning = FALSE, tidy = TRUE}
+rows <- c("Wariancja", "MSE", "Obciążenie")
+column1 <- c(binomial_data_1$variance, binomial_data_1$MSE, binomial_data_1$bias)
+column2 <- c(binomial_data_2$variance, binomial_data_2$MSE, binomial_data_2$bias)
+column3 <- c(binomial_data_3$variance, binomial_data_3$MSE, binomial_data_3$bias)
+column4 <- c(binomial_data_4$variance, binomial_data_4$MSE, binomial_data_4$bias)
+column5 <- c(binomial_data_5$variance, binomial_data_5$MSE, binomial_data_5$bias)
+table <- data.frame(column1, column2, column3, column4, column5)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$b(5,0.1)$", "$b(5,0.3)$", "$b(5,0.5)$", "$b(5,0.7)$", "$b(5,0.9)$"))
+```
+<p>Wszystkie uzyskane dane są bardzo bliskie zeru, więc uzyskaliśmy idealną sytuacje gdzie udało nam się zminimalizować wariancję jak i obciążenie, przez co nasz estymator jest jak najbardziej słuszny w przybliżaniu naszego parametru. Warto też zwrócić uwagę, że zdecydowanie najlepsze wyniki uzyskaliśmy dla skrajnych $\small p$, to znaczy takich, które są bliskie $\small 1$ lub $\small 0$.</p>
+
+<h2>Zadanie 2</h2>
+<p>W poniższym zadaniu wygenerujemy $\small n = 50$ obserwacji z <em>rozkładu Poissona</em> z parametrem $\small \lambda$, gdzie:</p>
+<ul>
+<li>$\small \lambda = 0.5$,</li>
+<li>$\small \lambda = 1$,</li>
+<li>$\small \lambda = 2$,</li>
+<li>$\small \lambda = 5$,</li>
+</ul>
+<p>Na ich podstawie wyznaczymy estymator największej wiarygodności wielkości $\small P(X = x)$, dla $\small x \in \{0,1, \ldots,10\}$, gdzie $\small X \sim \pi(\lambda)$.</p>
+```{r e2data, echo = FALSE, tidy = TRUE, warning = FALSE}
+mle2 <- function(x, y) {
+  return(exp(-mean(x))*mean(x)^y/factorial(y))
+}
+poisson_data_1 <- lapply(0:10, function(x) generate(rpois, list(50, 0.5), mle2, c(x), theta = dpois(x, 0.5)))
+poisson_data_2 <- lapply(0:10, function(x) generate(rpois, list(50, 1), mle2, c(x), theta = dpois(x, 1)))
+poisson_data_3 <- lapply(0:10, function(x) generate(rpois, list(50, 2), mle2, c(x), theta = dpois(x, 2)))
+poisson_data_4 <- lapply(0:10, function(x) generate(rpois, list(50, 5), mle2, c(x), theta = dpois(x, 5)))
+```
+<p>Dane zaprezentujem w poniższej tabeli:</p>
+```{r table1_ex2, echo = FALSE, tidy = TRUE, warning = FALSE}
+rows = c("$\\hat{P}(X = 0)$","$\\hat{P}(X = 1)$","$\\hat{P}(X = 2)$","$\\hat{P}(X = 3)$","$\\hat{P}(X = 4)$","$\\hat{P}(X = 5)$","$\\hat{P}(X = 6)$","$\\hat{P}(X = 7)$","$\\hat{P}(X = 8)$","$\\hat{P}(X = 9)$","$\\hat{P}(X = 10)$")
+column1 <- sapply(1:11, function(x) poisson_data_1[[x]]$trial_est)
+column2 <- sapply(1:11, function(x) poisson_data_2[[x]]$trial_est)
+column3 <- sapply(1:11, function(x) poisson_data_3[[x]]$trial_est)
+column4 <- sapply(1:11, function(x) poisson_data_4[[x]]$trial_est)
+
+table <- data.frame(column1, column2, column3, column4)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$\\pi(0.5)$", "$\\pi(1)$", "$\\pi(2)$", "$\\pi(5)$"))
+```
+<p>Przetestujemy teraz słuszność doboru estymatora, wyznaczając błąd średniokwadratowy, wariancję oraz obciążenie. Dane zaprezentujemy w czterech tabelach:</p>
+
+<h4>Rozkład $\small \pi(0.5)$</h4>
+```{r table3_ex2, echo = FALSE, warning = FALSE, tidy = TRUE}
+rows = c("$\\hat{P}(X = 0)$","$\\hat{P}(X = 1)$","$\\hat{P}(X = 2)$","$\\hat{P}(X = 3)$","$\\hat{P}(X = 4)$","$\\hat{P}(X = 5)$","$\\hat{P}(X = 6)$","$\\hat{P}(X = 7)$","$\\hat{P}(X = 8)$","$\\hat{P}(X = 9)$","$\\hat{P}(X = 10)$")
+column1 <- sapply(1:11, function(x) poisson_data_1[[x]]$variance)
+column2 <- sapply(1:11, function(x) poisson_data_1[[x]]$MSE)
+column3 <- sapply(1:11, function(x) poisson_data_1[[x]]$bias)
+
+table <- data.frame(column1, column2, column3)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("Wariancja", "MSE", "Obciążenie"))
+```
+
+<h4>Rozkład $\small \pi(1)$</h4>
+```{r table4_ex2, echo = FALSE, warning = FALSE, tidy = TRUE}
+rows = c("$\\hat{P}(X = 0)$","$\\hat{P}(X = 1)$","$\\hat{P}(X = 2)$","$\\hat{P}(X = 3)$","$\\hat{P}(X = 4)$","$\\hat{P}(X = 5)$","$\\hat{P}(X = 6)$","$\\hat{P}(X = 7)$","$\\hat{P}(X = 8)$","$\\hat{P}(X = 9)$","$\\hat{P}(X = 10)$")
+column1 <- sapply(1:11, function(x) poisson_data_2[[x]]$variance)
+column2 <- sapply(1:11, function(x) poisson_data_2[[x]]$MSE)
+column3 <- sapply(1:11, function(x) poisson_data_2[[x]]$bias)
+
+table <- data.frame(column1, column2, column3)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("Wariancja", "MSE", "Obciążenie"))
+```
+
+<h4>Rozkład $\small \pi(2)$</h4>
+```{r table5_ex2, echo = FALSE, warning = FALSE, tidy = TRUE}
+rows = c("$\\hat{P}(X = 0)$","$\\hat{P}(X = 1)$","$\\hat{P}(X = 2)$","$\\hat{P}(X = 3)$","$\\hat{P}(X = 4)$","$\\hat{P}(X = 5)$","$\\hat{P}(X = 6)$","$\\hat{P}(X = 7)$","$\\hat{P}(X = 8)$","$\\hat{P}(X = 9)$","$\\hat{P}(X = 10)$")
+column1 <- sapply(1:11, function(x) poisson_data_3[[x]]$variance)
+column2 <- sapply(1:11, function(x) poisson_data_3[[x]]$MSE)
+column3 <- sapply(1:11, function(x) poisson_data_3[[x]]$bias)
+
+table <- data.frame(column1, column2, column3)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("Wariancja", "MSE", "Obciążenie"))
+```
+
+<h4>Rozkład $\small \pi(5)$</h4>
+```{r table6_ex2, echo = FALSE, warning = FALSE, tidy = TRUE}
+rows = c("$\\hat{P}(X = 0)$","$\\hat{P}(X = 1)$","$\\hat{P}(X = 2)$","$\\hat{P}(X = 3)$","$\\hat{P}(X = 4)$","$\\hat{P}(X = 5)$","$\\hat{P}(X = 6)$","$\\hat{P}(X = 7)$","$\\hat{P}(X = 8)$","$\\hat{P}(X = 9)$","$\\hat{P}(X = 10)$")
+column1 <- sapply(1:11, function(x) poisson_data_4[[x]]$variance)
+column2 <- sapply(1:11, function(x) poisson_data_4[[x]]$MSE)
+column3 <- sapply(1:11, function(x) poisson_data_4[[x]]$bias)
+
+table <- data.frame(column1, column2, column3)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("Wariancja", "MSE", "Obciążenie"))
+```
+<p>Podsumowując uzyskane wyniki, możemy zauważyć, że dla wszystkich czterech rozkładów uzyskujemy bardzo dobre wyniki, co sugeruje słuszność wyboru estymacji. Przyglądając się dokładniej, można zauważyć, że dla punktu $\small x = \lambda$ uzyskujemy wyniki bliższe zeru niż w punktach sąsiednich. Warto też zwrócić uwagę, że im dalej od średniej $\small \lambda$, tym wyniki są lepsze.</p>
+
+<h2>Zadanie 3</h2>
+<p>W poniższym zadaniu przyjrzymy się czym są liczby <em>pseudolosowe</em> jak i ich algorytmy. Załóżmy, że chcemy napisać program, który będzie nam generował losowy ciąg liczb z przedziału $\small (0,1)$. Po chwili zastanowienia dochodzimy do wniosku, że pomimo tak prostego zadania problem okazuje się znacznie głębszy, ponieważ w ostateczności musimy posłużyć się pewną wartością (ziarnem), która jednoznacznie zdeterminuje naszą wartość. Pytanie więc skąd wziąć taką wartość, aby zachować chociaż pozory losowości? Zazwyczaj wykorzystywane są parametry mierzone przez nasz komputer w czasie rzeczywistym, takie jak godzina czy temperatura procesora. Oznacza to, że jeżeli napisalibyśmy algorytm wykorzystujący powyższy koncept, dostalibyśmy coś co generuje pozornie losowe liczby, nazywane <em>liczbami pseudolosowymi</em>. Wykorzystując metody propabilistyczne możemy tworzyć testy powyższych algorytmów, sprawdzające jak bardzo "losowe" są nasze wyniki.</p>
+<p>Warto też zastanowić się jak generować losowe wartości, ale z konkretnych rozkładów propabilistycznych. Ogółem, jeżeli algorytm omawiany w powyższym paragrafie jest wystarczająco dobry, to powinien on generować liczby z rozkładu $\small U(0,1)$. Oznaczmy te liczby jako $\small x_1, \ldots,x_n$. Teraz wystarczy wyznaczyć $\small F^{-1}(x_1), \ldots, F^{-1}(X_n)$, gdzie $\small F$ jest dystrybuantą rozkładu jakiego chcemy wygenerować próbę. Uzyskane liczby są już próbą z porządanego rozkładu.</p>
+
+<h2>Zadanie 4</h2>
+<p>W poniższym zadaniu wygenerujemy $\small n = 50$ obserwacji z <em>rozkładu Beta</em> z parametrami $\small \theta$ i $\small 1$, gdzie:</p>
+<ul>
+<li>$\small \theta = 0.5$,</li>
+<li>$\small \theta = 1$,</li>
+<li>$\small \theta = 2$,</li>
+<li>$\small \theta = 5$.</li>
+</ul>
+<p>Wykonamy to $\small 10 000$ razy. Na podstawie tego, wyznaczymy wartość estymatora $\hat{I(\theta)}$ informacji Fishera parametru $\small \theta$.</p>
+```{r e4data, echo = FALSE, tidy = TRUE, warning = FALSE}
+mle3 <- function(x) {
+  return((sum(log(x))/length(x))^2)
+}
+FisherInfo1 <- mle3(rbeta(50*10000, 0.5, 1)) #4
+FisherInfo2 <- mle3(rbeta(50*10000, 1, 1)) #1
+FisherInfo3 <- mle3(rbeta(50*10000, 2, 1)) #1/4
+FisherInfo4 <- mle3(rbeta(50*10000, 5, 1)) #1/25
+```
+<p>Wyniki zaprezentujemy w poniższej tabeli:</p>
+```{r table1_ex4, echo = FALSE, warning = FALSE, tidy = TRUE}
+rows <- c("$I(\\theta)$")
+column1 <- c(FisherInfo1)
+column2 <- c(FisherInfo2)
+column3 <- c(FisherInfo3)
+column4 <- c(FisherInfo4)
+table <- data.frame(column1, column2, column3, column4)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$Beta(0.5,1)$", "$Beta(1,1)$", "$Beta(2,1)$", "$Beta(5,1)$"))
+```
+<p>Wygenerujemy teraz 10 000 razy próbę o rozmiarze $\small n = 50$ z rozkładu $\small Beta(\theta, 1)$ dla wszystkich czterech parametrów $\small \theta$. Na jej podstawie wyznaczymy estymator największej wiarygodności $\small \hat{\theta}$. Natępnie zdefiniujemy nową zmienną $\small Y = \sqrt{n \hat{I(\theta)}}(\hat{\theta} - \theta)$ oraz obliczymy ją na podstawie zaobserwowanej próby wykorzystując obliczoną wcześniej informację Fishera.</p>
+<p>Będziemy analizować normalność zmiennej $\small Y$ za pomocą wykresu kwantylowo-kwantylowego i histogramu.</p>
+```{r Yvariable, echo = FALSE, tidy = TRUE, warning = FALSE}
+mle4 <- function(x) {
+  return(-length(x)/sum(log(x)))
+}
+
+Y_value <- function(x, i, t) {
+  return(sqrt(length(x)*i)*(mle4(x) - t))
+}
+
+Y_values1 <- sapply(1:10000, function(x)Y_value(rbeta(50, 0.5, 1), FisherInfo1, 0.5))
+Y_values2 <- sapply(1:10000, function(x)Y_value(rbeta(50, 1, 1), FisherInfo2, 1))
+Y_values3 <- sapply(1:10000, function(x)Y_value(rbeta(50, 2, 1), FisherInfo3, 2))
+Y_values4 <- sapply(1:10000, function(x)Y_value(rbeta(50, 5, 1), FisherInfo4, 5))
+```
+<h4>Wykresy kwantylowo-kwantylowe</h4>
+```{r qqplots_ex4, echo = FALSE, warning = FALSE, tidy = TRUE}
+qqnorm(Y_values1, col = "#e70ef5", xlab = "N(0,1)", ylab = "Y (0.5)", main = NULL)
+qqline(Y_values1, distribution = qnorm, col = "#0e3ff5", lwd = 3)
+qqnorm(Y_values2, col = "#e70ef5", xlab = "N(0,1)", ylab = "Y (1)", main = NULL)
+qqline(Y_values2, distribution = qnorm, col = "#0e3ff5", lwd = 3)
+qqnorm(Y_values3, col = "#e70ef5", xlab = "N(0,1)", ylab = "Y (2)", main = NULL)
+qqline(Y_values3, distribution = qnorm, col = "#0e3ff5", lwd = 3)
+qqnorm(Y_values4, col = "#e70ef5", xlab = "N(0,1)", ylab = "Y (5)", main = NULL)
+qqline(Y_values4, distribution = qnorm, col = "#0e3ff5", lwd = 3)
+```
+<p>Możemy zauważyć, że wszystkie wykresy przedstawiają tak samo dobre wyniki. Przez co możemy uznać, że zmienna $\small Y$ zbiega do rozkładu standardowego normalnego wraz ze wzrostem próby. Aby się upewnić, zaprezentujemy poniżej histogramy dla zmiennej $\small Y$ z nałożoną krzywą gęstości rozkładu standardowego normalnego.</p>
+<h4>Histogramy</h4>
+```{r hist_ex4, echo = FALSE, warning = FALSE, tidy = TRUE}
+hist(Y_values1, col = "#fb9e2e", xlab = "Y (0.5)", ylab = "gęstość", main = NULL, prob = TRUE, breaks = seq(-10,10, by = 0.5), xlim = c(-4,4), ylim = c(0,0.4))
+curve(dnorm(x), add = TRUE, lwd = 3, col = "#34495e")
+hist(Y_values2, col = "#fb9e2e", xlab = "Y (1)", ylab = "gęstość", main = NULL, prob = TRUE, breaks = seq(-10,10, by = 0.5), xlim = c(-4,4), ylim = c(0,0.4))
+curve(dnorm(x), add = TRUE, lwd = 3, col = "#34495e")
+hist(Y_values3, col = "#fb9e2e", xlab = "Y (2)", ylab = "gęstość", main = NULL, prob = TRUE, breaks = seq(-10,10, by = 0.5), xlim = c(-4,4), ylim = c(0,0.4))
+curve(dnorm(x), add = TRUE, lwd = 3, col = "#34495e")
+hist(Y_values4, col = "#fb9e2e", xlab = "Y (5)", ylab = "gęstość", main = NULL, prob = TRUE, breaks = seq(-10,10, by = 0.5), xlim = c(-4,4), ylim = c(0,0.4))
+curve(dnorm(x), add = TRUE, lwd = 3, col = "#34495e")
+```
+<p>Jeszcze raz widać, że rozkład naszej zmiennej $\small Y$ jest bliski rozkładowi standardowemu normalnemu. Dla widoczności ograniczyłem się do symetrycznego przedziału od -4 do 4 z odstępami o 0.5.</p>
+
+<h2>Zadanie 5</h2>
+<p>W poniższym zadaniu wygenerujemy $\small n = 50$ obserwacji z <em>rozkładu Laplace'a</em> z parametrem przesunięcia $\theta$ i skali $\sigma$, gdzie:</p>
+<ul>
+<li>$\small \theta = 1,\hspace{4px} \sigma = 1$,</li>
+<li>$\small \theta = 4,\hspace{4px} \sigma = 1$,</li>
+<li>$\small \theta = 1,\hspace{4px} \sigma = 2$.</li>
+</ul>
+<p>Natępnie dla każdej z tych obserwacji, obliczymy wartość estymatora parametru $\small \theta$ postaci:</p>
+$$ 
+\small \hat{\theta_1} = \bar{X} = \frac{X_1 + X_2 + \ldots + X_n}{n}, \\
+\small \hat{\theta_2} = Me\{X_1, \ldots , X_n \}, \\
+\small \hat{\theta_3} = \sum_{i=1}^{n}{w_iX_i}, \hspace{10px} \text{gdzie} \hspace{5px} w_i = \frac{2k + n - 1}{2n^2}, \\
+\small \hat{\theta_4} = \sum_{i=1}^{n}{w_iX_{i:n}}, 
+$$
+gdzie $\small X_{1:n} \leq \ldots \leq X_{n:n}$ są uporządkowanymi obserwacjami $\small X_1, \ldots , X_n ; \ \ w_i = \varphi\left( \Phi^{-1}(\frac{i-1}{n})\right) -  \varphi\left( \Phi^{-1}(\frac{i}{n})\right)$, gdzie $\small \varphi$ jest gęstością, a $\small \Phi$ dystrybuantą standardowego rozkładu normalnego. 
+```{r e5data, echo = FALSE, tidy = TRUE, warning = FALSE}
+
+seq1 <- sapply(1:50, FUN = function(k){(2*k+50-1)/(2*50^2)})
+est3 <- function(Data) {
+  return(sum(seq1 * Data))
+}
+seq2 <- sapply(1:50, FUN = function(i){dnorm(qnorm((i-1)/50)) - dnorm(qnorm(i/50))})
+est4 <- function(Data) {
+  return(sum(seq2 * sort(Data)))
+} 
+laplace_data_1 <- list()
+laplace_data_1[[1]] <- generate(rlaplace, list(50, 1, 1), mean, theta = 1)
+laplace_data_1[[2]] <- generate(rlaplace, list(50, 1, 1), median, theta = 1)
+laplace_data_1[[3]] <- generate(rlaplace, list(50, 1, 1), est3, theta = 1)
+laplace_data_1[[4]] <- generate(rlaplace, list(50, 1, 1), est4, theta = 1)
+laplace_data_2 <- list()
+laplace_data_2[[1]] <- generate(rlaplace, list(50, 4, 1), mean, theta = 4)
+laplace_data_2[[2]] <- generate(rlaplace, list(50, 4, 1), median, theta = 4)
+laplace_data_2[[3]] <- generate(rlaplace, list(50, 4, 1), est3, theta = 4)
+laplace_data_2[[4]] <- generate(rlaplace, list(50, 4, 1), est4, theta = 4)
+laplace_data_3 <- list()
+laplace_data_3[[1]] <- generate(rlaplace, list(50, 1, 2), mean, theta = 1)
+laplace_data_3[[2]] <- generate(rlaplace, list(50, 1, 2), median, theta = 1)
+laplace_data_3[[3]] <- generate(rlaplace, list(50, 1, 2), est3, theta = 1)
+laplace_data_3[[4]] <- generate(rlaplace, list(50, 1, 2), est4, theta = 1)
+```
+
+<p>Dane przedstawimy w poniższej tabeli:</p>
+
+```{r table1ex5, echo = FALSE, warning = FALSE, tidy = TRUE}
+rows = c("$\\hat{\\theta_1}$", "$\\hat{\\theta_2}$", "$\\hat{\\theta_3}$", "$\\hat{\\theta_4}$")
+column1 <- sapply(1:4, function(x) laplace_data_1[[x]]$trial_est)
+column2 <- sapply(1:4, function(x) laplace_data_2[[x]]$trial_est)
+column3 <- sapply(1:4, function(x) laplace_data_3[[x]]$trial_est)
+table <- data.frame(column1, column2, column3)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$L(1,1)$", "$L(4,1)$", "$L(1,2)$"))
+```
+<p>Z uzyskanych liczb, nie jesteśmy w stanie wyciągnąć zbyt wiele użytecznych wniosków. Najbardziej rzucające się w oczy jest estymowanie parametru $\small \theta$ estymatorem $\small \hat{\theta_4}$, którego wartości są najbardziej rozbieżne od prawdziwej wartości $\small \theta$. Jest to spowodowane tym, że ciąg wag jaki dobraliśmy, nadaje największe znaczenie wyrazom, które są najbardziej ekstremalne.</p>
+<p>Aby lepiej przyjrzeć się powyższym parametrom, wykonamy całe doświadczenie jeszcze $\small 10000$ razy i wyznaczymy błąd średniokwadratowy, wariancję oraz obciążenie każdego z estymatorów.</p>
+<p>Wyniki zaprezentujemy w poniższych tabelach dla poszczególnych rozkładów:</p>
+<h4>$\small L(1,1)$:</h4>
+```{r table2ex5, echo = FALSE, warning = FALSE, tidy = TRUE}
+rows <- c("Wariancja", "MSE", "Obciążenie")
+column1 <- c(laplace_data_1[[1]]$variance, laplace_data_1[[1]]$MSE, laplace_data_1[[1]]$bias)
+column2 <- c(laplace_data_1[[2]]$variance, laplace_data_1[[2]]$MSE, laplace_data_1[[2]]$bias)
+column3 <- c(laplace_data_1[[3]]$variance, laplace_data_1[[3]]$MSE, laplace_data_1[[3]]$bias)
+column4 <- c(laplace_data_1[[4]]$variance, laplace_data_1[[4]]$MSE, laplace_data_1[[4]]$bias)
+table <- data.frame(column1, column2, column3, column4)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$\\hat{\\theta_1}$", "$\\hat{\\theta_2}$", "$\\hat{\\theta_3}$", "$\\hat{\\theta_4}$"))
+```
+
+<h4>$\small L(4,1)$:</h4>
+```{r table3ex5, echo = FALSE, warning = FALSE, tidy = TRUE}
+rows <- c("Wariancja", "MSE", "Obciążenie")
+column1 <- c(laplace_data_2[[1]]$variance, laplace_data_2[[1]]$MSE, laplace_data_2[[1]]$bias)
+column2 <- c(laplace_data_2[[2]]$variance, laplace_data_2[[2]]$MSE, laplace_data_2[[2]]$bias)
+column3 <- c(laplace_data_2[[3]]$variance, laplace_data_2[[3]]$MSE, laplace_data_2[[3]]$bias)
+column4 <- c(laplace_data_2[[4]]$variance, laplace_data_2[[4]]$MSE, laplace_data_2[[4]]$bias)
+table <- data.frame(column1, column2, column3, column4)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$\\hat{\\theta_1}$", "$\\hat{\\theta_2}$", "$\\hat{\\theta_3}$", "$\\hat{\\theta_4}$"))
+```
+
+<h4>$\small L(1,2)$:</h4>
+```{r table4ex5, echo = FALSE, warning = FALSE, tidy = TRUE}
+rows <- c("Wariancja", "MSE", "Obciążenie")
+column1 <- c(laplace_data_3[[1]]$variance, laplace_data_3[[1]]$MSE, laplace_data_3[[1]]$bias)
+column2 <- c(laplace_data_3[[2]]$variance, laplace_data_3[[2]]$MSE, laplace_data_3[[2]]$bias)
+column3 <- c(laplace_data_3[[3]]$variance, laplace_data_3[[3]]$MSE, laplace_data_3[[3]]$bias)
+column4 <- c(laplace_data_3[[4]]$variance, laplace_data_3[[4]]$MSE, laplace_data_3[[4]]$bias)
+table <- data.frame(column1, column2, column3, column4)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$\\hat{\\theta_1}$", "$\\hat{\\theta_2}$", "$\\hat{\\theta_3}$", "$\\hat{\\theta_4}$"))
+```
+<p>Podsumowując, powyższe tabele prezentują wyniki podobnych rzędów, gdzie najciekawsze wyniki uzyskaliśmy w ostatniej kolumnie, gdzie testowaliśmy estymator $\small \hat{\theta_4}$. Ponieważ jest on jako jedyny obciążonym estymatorem parametru $\small \theta$, stąd zgodnie z teorią dostajemy duże obciążenie. Warto też zwrócić uwagę, że wyniki spełniają z dużą dokładnością równanie $\small MSE(\hat{\theta}) = Var(\hat{\theta}) + Bias(\hat{\theta})^2$, co sugeruje, że nasze obliczenia są prawidłowe. Pierwsze trzy estymatory zdają się być najużyteczniejsze, ze względu na niską wariancję jak i obciążenie, co jest pożądane przy dobrych estymatorach. Można zauważyć, że estymator $\small \hat{\theta}_2$ czyli mediana, osiąga najlepsze rezultaty, choć nie odbiegają one znacznie od średniej próbkowej. Jest to jedyna większa różnica jaką można zaobserowować w porównaniu z testem na rozkładzie normalnym, jaki wykonywaliśmy przy okazji listy pierwszej. Średnia próbkowa była tam najlepszym estymatorem ze wszystkich.</p>
+
+<h2>Zadanie 6</h2>
+<p>W poniższym zadaniu powtórzymy eksperymenty numeryczne z zadań 1, 2, 4 i 5 dla $\small n = 20$ i $\small n = 100$, w celu przeanalizowania czy nasze obliczenia są bardzo czułe na rozmiar próby.</p>
+<h4>Eksperyment z zadania 1 dla n = 20</h4>
+```{r e1data20, echo = FALSE, tidy = TRUE, warning = FALSE}
+
+binomial_data_1 <- generate(rbinom, list(20, 5, 0.1), mle1, theta = 0.00856)
+binomial_data_2 <- generate(rbinom, list(20, 5, 0.3), mle1, theta = 0.16308)
+binomial_data_3 <- generate(rbinom, list(20, 5, 0.5), mle1, theta = 0.5)
+binomial_data_4 <- generate(rbinom, list(20, 5, 0.7), mle1, theta = 0.83692)
+binomial_data_5 <- generate(rbinom, list(20, 5, 0.9), mle1, theta = 0.99144)
+rows = c("$\\hat{P}(X \\geq 3)$", "$P(X \\geq 3)$")
+column1 <- c(binomial_data_1$trial_est, binomial_data_1$theta)
+column2 <- c(binomial_data_2$trial_est, binomial_data_2$theta)
+column3 <- c(binomial_data_3$trial_est, binomial_data_3$theta)
+column4 <- c(binomial_data_4$trial_est, binomial_data_4$theta)
+column5 <- c(binomial_data_5$trial_est, binomial_data_5$theta)
+table <- data.frame(column1, column2, column3, column4, column5)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$b(5,0.1)$", "$b(5,0.3)$", "$b(5,0.5)$", "$b(5,0.7)$", "$b(5,0.9)$"))
+
+rows <- c("Wariancja", "MSE", "Obciążenie")
+column1 <- c(binomial_data_1$variance, binomial_data_1$MSE, binomial_data_1$bias)
+column2 <- c(binomial_data_2$variance, binomial_data_2$MSE, binomial_data_2$bias)
+column3 <- c(binomial_data_3$variance, binomial_data_3$MSE, binomial_data_3$bias)
+column4 <- c(binomial_data_4$variance, binomial_data_4$MSE, binomial_data_4$bias)
+column5 <- c(binomial_data_5$variance, binomial_data_5$MSE, binomial_data_5$bias)
+table <- data.frame(column1, column2, column3, column4, column5)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$b(5,0.1)$", "$b(5,0.3)$", "$b(5,0.5)$", "$b(5,0.7)$", "$b(5,0.9)$"))
+```
+<p>Z powyższych danych możemy zauważyć, że zmniejszenie próby do 20 poskutkowało znacznym pogorszeniem wyników. Najlepiej to widać patrząc na wzrost błędu średniokwadratowego, który jest znacznie większy niż dla $\small n = 50$.</p>
+<h4>Eksperyment z zadania 1 dla n = 100</h4>
+```{r e1data100, echo = FALSE, tidy = TRUE, warning = FALSE}
+
+binomial_data_1 <- generate(rbinom, list(100, 5, 0.1), mle1, theta = 0.00856)
+binomial_data_2 <- generate(rbinom, list(100, 5, 0.3), mle1, theta = 0.16308)
+binomial_data_3 <- generate(rbinom, list(100, 5, 0.5), mle1, theta = 0.5)
+binomial_data_4 <- generate(rbinom, list(100, 5, 0.7), mle1, theta = 0.83692)
+binomial_data_5 <- generate(rbinom, list(100, 5, 0.9), mle1, theta = 0.99144)
+rows = c("$\\hat{P}(X \\geq 3)$", "$P(X \\geq 3)$")
+column1 <- c(binomial_data_1$trial_est, binomial_data_1$theta)
+column2 <- c(binomial_data_2$trial_est, binomial_data_2$theta)
+column3 <- c(binomial_data_3$trial_est, binomial_data_3$theta)
+column4 <- c(binomial_data_4$trial_est, binomial_data_4$theta)
+column5 <- c(binomial_data_5$trial_est, binomial_data_5$theta)
+table <- data.frame(column1, column2, column3, column4, column5)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$b(5,0.1)$", "$b(5,0.3)$", "$b(5,0.5)$", "$b(5,0.7)$", "$b(5,0.9)$"))
+
+rows <- c("Wariancja", "MSE", "Obciążenie")
+column1 <- c(binomial_data_1$variance, binomial_data_1$MSE, binomial_data_1$bias)
+column2 <- c(binomial_data_2$variance, binomial_data_2$MSE, binomial_data_2$bias)
+column3 <- c(binomial_data_3$variance, binomial_data_3$MSE, binomial_data_3$bias)
+column4 <- c(binomial_data_4$variance, binomial_data_4$MSE, binomial_data_4$bias)
+column5 <- c(binomial_data_5$variance, binomial_data_5$MSE, binomial_data_5$bias)
+table <- data.frame(column1, column2, column3, column4, column5)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$b(5,0.1)$", "$b(5,0.3)$", "$b(5,0.5)$", "$b(5,0.7)$", "$b(5,0.9)$"))
+```
+<p>Wyniki jakie uzyskaliśmy są oczywiście lepsze, aczkolwiek nie jest to aż tak znaczna różnica w porównaniu z $\small n = 50$.</p>
+
+
+<h4>Eksperyment z zadania 2 dla n = 20</h4>
+
+```{r e2data20, echo = FALSE, tidy = TRUE, warning = FALSE}
+poisson_data_1 <- lapply(0:10, function(x) generate(rpois, list(20, 0.5), mle2, c(x), theta = dpois(x, 0.5)))
+poisson_data_2 <- lapply(0:10, function(x) generate(rpois, list(20, 1), mle2, c(x), theta = dpois(x, 1)))
+poisson_data_3 <- lapply(0:10, function(x) generate(rpois, list(20, 2), mle2, c(x), theta = dpois(x, 2)))
+poisson_data_4 <- lapply(0:10, function(x) generate(rpois, list(20, 5), mle2, c(x), theta = dpois(x, 5)))
+
+rows = c("$\\hat{P}(X = 0)$","$\\hat{P}(X = 1)$","$\\hat{P}(X = 2)$","$\\hat{P}(X = 3)$","$\\hat{P}(X = 4)$","$\\hat{P}(X = 5)$","$\\hat{P}(X = 6)$","$\\hat{P}(X = 7)$","$\\hat{P}(X = 8)$","$\\hat{P}(X = 9)$","$\\hat{P}(X = 10)$")
+column1 <- sapply(1:11, function(x) poisson_data_1[[x]]$trial_est)
+column2 <- sapply(1:11, function(x) poisson_data_2[[x]]$trial_est)
+column3 <- sapply(1:11, function(x) poisson_data_3[[x]]$trial_est)
+column4 <- sapply(1:11, function(x) poisson_data_4[[x]]$trial_est)
+
+table <- data.frame(column1, column2, column3, column4)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$\\pi(0.5)$", "$\\pi(1)$", "$\\pi(2)$", "$\\pi(5)$"))
+```
+<h4>Rozkład $\small \pi(0.5)$</h4>
+```{r table3_ex220, echo = FALSE, warning = FALSE, tidy = TRUE}
+rows = c("$\\hat{P}(X = 0)$","$\\hat{P}(X = 1)$","$\\hat{P}(X = 2)$","$\\hat{P}(X = 3)$","$\\hat{P}(X = 4)$","$\\hat{P}(X = 5)$","$\\hat{P}(X = 6)$","$\\hat{P}(X = 7)$","$\\hat{P}(X = 8)$","$\\hat{P}(X = 9)$","$\\hat{P}(X = 10)$")
+column1 <- sapply(1:11, function(x) poisson_data_1[[x]]$variance)
+column2 <- sapply(1:11, function(x) poisson_data_1[[x]]$MSE)
+column3 <- sapply(1:11, function(x) poisson_data_1[[x]]$bias)
+
+table <- data.frame(column1, column2, column3)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("Wariancja", "MSE", "Obciążenie"))
+```
+
+<h4>Rozkład $\small \pi(1)$</h4>
+```{r table4_ex220, echo = FALSE, warning = FALSE, tidy = TRUE}
+rows = c("$\\hat{P}(X = 0)$","$\\hat{P}(X = 1)$","$\\hat{P}(X = 2)$","$\\hat{P}(X = 3)$","$\\hat{P}(X = 4)$","$\\hat{P}(X = 5)$","$\\hat{P}(X = 6)$","$\\hat{P}(X = 7)$","$\\hat{P}(X = 8)$","$\\hat{P}(X = 9)$","$\\hat{P}(X = 10)$")
+column1 <- sapply(1:11, function(x) poisson_data_2[[x]]$variance)
+column2 <- sapply(1:11, function(x) poisson_data_2[[x]]$MSE)
+column3 <- sapply(1:11, function(x) poisson_data_2[[x]]$bias)
+
+table <- data.frame(column1, column2, column3)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("Wariancja", "MSE", "Obciążenie"))
+```
+
+<h4>Rozkład $\small \pi(2)$</h4>
+```{r table5_ex220, echo = FALSE, warning = FALSE, tidy = TRUE}
+rows = c("$\\hat{P}(X = 0)$","$\\hat{P}(X = 1)$","$\\hat{P}(X = 2)$","$\\hat{P}(X = 3)$","$\\hat{P}(X = 4)$","$\\hat{P}(X = 5)$","$\\hat{P}(X = 6)$","$\\hat{P}(X = 7)$","$\\hat{P}(X = 8)$","$\\hat{P}(X = 9)$","$\\hat{P}(X = 10)$")
+column1 <- sapply(1:11, function(x) poisson_data_3[[x]]$variance)
+column2 <- sapply(1:11, function(x) poisson_data_3[[x]]$MSE)
+column3 <- sapply(1:11, function(x) poisson_data_3[[x]]$bias)
+
+table <- data.frame(column1, column2, column3)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("Wariancja", "MSE", "Obciążenie"))
+```
+
+<h4>Rozkład $\small \pi(5)$</h4>
+```{r table6_ex220, echo = FALSE, warning = FALSE, tidy = TRUE}
+rows = c("$\\hat{P}(X = 0)$","$\\hat{P}(X = 1)$","$\\hat{P}(X = 2)$","$\\hat{P}(X = 3)$","$\\hat{P}(X = 4)$","$\\hat{P}(X = 5)$","$\\hat{P}(X = 6)$","$\\hat{P}(X = 7)$","$\\hat{P}(X = 8)$","$\\hat{P}(X = 9)$","$\\hat{P}(X = 10)$")
+column1 <- sapply(1:11, function(x) poisson_data_4[[x]]$variance)
+column2 <- sapply(1:11, function(x) poisson_data_4[[x]]$MSE)
+column3 <- sapply(1:11, function(x) poisson_data_4[[x]]$bias)
+
+table <- data.frame(column1, column2, column3)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("Wariancja", "MSE", "Obciążenie"))
+```
+
+<p>Podsumowując wszystkie wyniki, można zauważyć lekkie pogorszenie powyższych statystyk, ale jest ono na tyle małe, że w tym przypadku możnaby ograniczyć się do próby rozmiaru $\small n = 20$ bez znacznej utraty dokładności wyników w porównaniu z $\small n = 50$.</p>
+<h4>Eksperyment z zadania 2 dla n = 100</h4>
+
+```{r e2data100, echo = FALSE, tidy = TRUE, warning = FALSE}
+poisson_data_1 <- lapply(0:10, function(x) generate(rpois, list(100, 0.5), mle2, c(x), theta = dpois(x, 0.5)))
+poisson_data_2 <- lapply(0:10, function(x) generate(rpois, list(100, 1), mle2, c(x), theta = dpois(x, 1)))
+poisson_data_3 <- lapply(0:10, function(x) generate(rpois, list(100, 2), mle2, c(x), theta = dpois(x, 2)))
+poisson_data_4 <- lapply(0:10, function(x) generate(rpois, list(100, 5), mle2, c(x), theta = dpois(x, 5)))
+
+rows = c("$\\hat{P}(X = 0)$","$\\hat{P}(X = 1)$","$\\hat{P}(X = 2)$","$\\hat{P}(X = 3)$","$\\hat{P}(X = 4)$","$\\hat{P}(X = 5)$","$\\hat{P}(X = 6)$","$\\hat{P}(X = 7)$","$\\hat{P}(X = 8)$","$\\hat{P}(X = 9)$","$\\hat{P}(X = 10)$")
+column1 <- sapply(1:11, function(x) poisson_data_1[[x]]$trial_est)
+column2 <- sapply(1:11, function(x) poisson_data_2[[x]]$trial_est)
+column3 <- sapply(1:11, function(x) poisson_data_3[[x]]$trial_est)
+column4 <- sapply(1:11, function(x) poisson_data_4[[x]]$trial_est)
+
+table <- data.frame(column1, column2, column3, column4)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$\\pi(0.5)$", "$\\pi(1)$", "$\\pi(2)$", "$\\pi(5)$"))
+```
+<h4>Rozkład $\small \pi(0.5)$</h4>
+```{r table3_ex2100, echo = FALSE, warning = FALSE, tidy = TRUE}
+rows = c("$\\hat{P}(X = 0)$","$\\hat{P}(X = 1)$","$\\hat{P}(X = 2)$","$\\hat{P}(X = 3)$","$\\hat{P}(X = 4)$","$\\hat{P}(X = 5)$","$\\hat{P}(X = 6)$","$\\hat{P}(X = 7)$","$\\hat{P}(X = 8)$","$\\hat{P}(X = 9)$","$\\hat{P}(X = 10)$")
+column1 <- sapply(1:11, function(x) poisson_data_1[[x]]$variance)
+column2 <- sapply(1:11, function(x) poisson_data_1[[x]]$MSE)
+column3 <- sapply(1:11, function(x) poisson_data_1[[x]]$bias)
+
+table <- data.frame(column1, column2, column3)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("Wariancja", "MSE", "Obciążenie"))
+```
+
+<h4>Rozkład $\small \pi(1)$</h4>
+```{r table4_ex2100, echo = FALSE, warning = FALSE, tidy = TRUE}
+rows = c("$\\hat{P}(X = 0)$","$\\hat{P}(X = 1)$","$\\hat{P}(X = 2)$","$\\hat{P}(X = 3)$","$\\hat{P}(X = 4)$","$\\hat{P}(X = 5)$","$\\hat{P}(X = 6)$","$\\hat{P}(X = 7)$","$\\hat{P}(X = 8)$","$\\hat{P}(X = 9)$","$\\hat{P}(X = 10)$")
+column1 <- sapply(1:11, function(x) poisson_data_2[[x]]$variance)
+column2 <- sapply(1:11, function(x) poisson_data_2[[x]]$MSE)
+column3 <- sapply(1:11, function(x) poisson_data_2[[x]]$bias)
+
+table <- data.frame(column1, column2, column3)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("Wariancja", "MSE", "Obciążenie"))
+```
+
+<h4>Rozkład $\small \pi(2)$</h4>
+```{r table5_ex2100, echo = FALSE, warning = FALSE, tidy = TRUE}
+rows = c("$\\hat{P}(X = 0)$","$\\hat{P}(X = 1)$","$\\hat{P}(X = 2)$","$\\hat{P}(X = 3)$","$\\hat{P}(X = 4)$","$\\hat{P}(X = 5)$","$\\hat{P}(X = 6)$","$\\hat{P}(X = 7)$","$\\hat{P}(X = 8)$","$\\hat{P}(X = 9)$","$\\hat{P}(X = 10)$")
+column1 <- sapply(1:11, function(x) poisson_data_3[[x]]$variance)
+column2 <- sapply(1:11, function(x) poisson_data_3[[x]]$MSE)
+column3 <- sapply(1:11, function(x) poisson_data_3[[x]]$bias)
+
+table <- data.frame(column1, column2, column3)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("Wariancja", "MSE", "Obciążenie"))
+```
+
+<h4>Rozkład $\small \pi(5)$</h4>
+```{r table6_ex2100, echo = FALSE, warning = FALSE, tidy = TRUE}
+rows = c("$\\hat{P}(X = 0)$","$\\hat{P}(X = 1)$","$\\hat{P}(X = 2)$","$\\hat{P}(X = 3)$","$\\hat{P}(X = 4)$","$\\hat{P}(X = 5)$","$\\hat{P}(X = 6)$","$\\hat{P}(X = 7)$","$\\hat{P}(X = 8)$","$\\hat{P}(X = 9)$","$\\hat{P}(X = 10)$")
+column1 <- sapply(1:11, function(x) poisson_data_4[[x]]$variance)
+column2 <- sapply(1:11, function(x) poisson_data_4[[x]]$MSE)
+column3 <- sapply(1:11, function(x) poisson_data_4[[x]]$bias)
+
+table <- data.frame(column1, column2, column3)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("Wariancja", "MSE", "Obciążenie"))
+```
+<p>W tym przypadku otrzymujemy lepsze wyniki, ale jak już wcześniej zauważyliśmy próba rozmiaru $\small n = 20$ jest wystarczająca, więc tym bardziej dla $\small n = 100$ uzyskamy dobre estymacje, choć potrzebujemy znacznie mniej dla porównywalnych wyników.</p>
+
+<h4>Eksperyment z zadania 4 dla n = 20</h4>
+<p>W poniższym eksperymencie ograniczymy się tylko do przypadku $\small \theta = 2$ dla przejrzystości, jak i z uwagi, że dla $\small n = 50$ uzyskaliśmy analogiczne wyniki dla wszystkich rozkładów.</p>
+```{r e4data20, echo = FALSE, tidy = TRUE, warning = FALSE}
+FisherInfo3 <- mle3(rbeta(20*10000, 2, 1)) #1/4
+Y_values3 <- sapply(1:10000, function(x)Y_value(rbeta(20, 2, 1), FisherInfo3, 2))
+qqnorm(Y_values3, col = "#e70ef5", xlab = "N(0,1)", ylab = "Y (2)", main = NULL)
+qqline(Y_values3, distribution = qnorm, col = "#0e3ff5", lwd = 3)
+hist(Y_values3, col = "#fb9e2e", xlab = "Y (2)", ylab = "gęstość", main = NULL, prob = TRUE, breaks = seq(-10,10, by = 0.5), xlim = c(-4,4), ylim = c(0,0.4))
+curve(dnorm(x), add = TRUE, lwd = 3, col = "#34495e")
+```
+<p>Jak widać na wykresie kwantylowo-kwantylowym, wyniki jakie uzyskaliśmy znacznie rozjeżdżają się z tymi jakie byśmy oczekiwali. Na histogramie wyraźnie widać, że pomimo iż w okolicach 0 wyniki są zbliżone do krzywej rozkładu standardowego normalnego, tak na ogonach są już duże rozbieżności.</p>
+<h4>Eksperyment z zadania 4 dla n = 100</h4>
+```{r e4data100, echo = FALSE, tidy = TRUE, warning = FALSE}
+FisherInfo3 <- mle3(rbeta(100*10000, 2, 1)) #1/4
+Y_values3 <- sapply(1:10000, function(x)Y_value(rbeta(100, 2, 1), FisherInfo3, 2))
+qqnorm(Y_values3, col = "#e70ef5", xlab = "N(0,1)", ylab = "Y (2)", main = NULL)
+qqline(Y_values3, distribution = qnorm, col = "#0e3ff5", lwd = 3)
+hist(Y_values3, col = "#fb9e2e", xlab = "Y (2)", ylab = "gęstość", main = NULL, prob = TRUE, breaks = seq(-10,10, by = 0.5), xlim = c(-4,4), ylim = c(0,0.4))
+curve(dnorm(x), add = TRUE, lwd = 3, col = "#34495e")
+```
+<p>Po wykresie kwantylowo-kwantylowym jak i histogramie możemy zauważyć, że wyniki jakie uzyskaliśmy są znacznie lepsze, co rzeczywiście pokazuje zbieżność zmiennej $\small Y$ do rozkładu standardowego normalnego wraz ze wzrostem $\small n$.</p>
+
+<h4>Eksperyment z zadania 5 dla n = 20</h4>
+
+```{r e5data20, echo = FALSE, tidy = TRUE, warning = FALSE}
+
+seq1 <- sapply(1:20, FUN = function(k){(2*k+20-1)/(2*20^2)})
+est3 <- function(Data) {
+  return(sum(seq1 * Data))
+}
+seq2 <- sapply(1:20, FUN = function(i){dnorm(qnorm((i-1)/20)) - dnorm(qnorm(i/20))})
+est4 <- function(Data) {
+  return(sum(seq2 * sort(Data)))
+} 
+laplace_data_1 <- list()
+laplace_data_1[[1]] <- generate(rlaplace, list(20, 1, 1), mean, theta = 1)
+laplace_data_1[[2]] <- generate(rlaplace, list(20, 1, 1), median, theta = 1)
+laplace_data_1[[3]] <- generate(rlaplace, list(20, 1, 1), est3, theta = 1)
+laplace_data_1[[4]] <- generate(rlaplace, list(20, 1, 1), est4, theta = 1)
+laplace_data_2 <- list()
+laplace_data_2[[1]] <- generate(rlaplace, list(20, 4, 1), mean, theta = 4)
+laplace_data_2[[2]] <- generate(rlaplace, list(20, 4, 1), median, theta = 4)
+laplace_data_2[[3]] <- generate(rlaplace, list(20, 4, 1), est3, theta = 4)
+laplace_data_2[[4]] <- generate(rlaplace, list(20, 4, 1), est4, theta = 4)
+laplace_data_3 <- list()
+laplace_data_3[[1]] <- generate(rlaplace, list(20, 1, 2), mean, theta = 1)
+laplace_data_3[[2]] <- generate(rlaplace, list(20, 1, 2), median, theta = 1)
+laplace_data_3[[3]] <- generate(rlaplace, list(20, 1, 2), est3, theta = 1)
+laplace_data_3[[4]] <- generate(rlaplace, list(20, 1, 2), est4, theta = 1)
+
+rows = c("$\\hat{\\theta_1}$", "$\\hat{\\theta_2}$", "$\\hat{\\theta_3}$", "$\\hat{\\theta_4}$")
+column1 <- sapply(1:4, function(x) laplace_data_1[[x]]$trial_est)
+column2 <- sapply(1:4, function(x) laplace_data_2[[x]]$trial_est)
+column3 <- sapply(1:4, function(x) laplace_data_3[[x]]$trial_est)
+table <- data.frame(column1, column2, column3)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$L(1,1)$", "$L(4,1)$", "$L(1,2)$"))
+```
+<h4>$\small L(1,1)$:</h4>
+```{r table2ex520, echo = FALSE, warning = FALSE, tidy = TRUE}
+rows <- c("Wariancja", "MSE", "Obciążenie")
+column1 <- c(laplace_data_1[[1]]$variance, laplace_data_1[[1]]$MSE, laplace_data_1[[1]]$bias)
+column2 <- c(laplace_data_1[[2]]$variance, laplace_data_1[[2]]$MSE, laplace_data_1[[2]]$bias)
+column3 <- c(laplace_data_1[[3]]$variance, laplace_data_1[[3]]$MSE, laplace_data_1[[3]]$bias)
+column4 <- c(laplace_data_1[[4]]$variance, laplace_data_1[[4]]$MSE, laplace_data_1[[4]]$bias)
+table <- data.frame(column1, column2, column3, column4)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$\\hat{\\theta_1}$", "$\\hat{\\theta_2}$", "$\\hat{\\theta_3}$", "$\\hat{\\theta_4}$"))
+```
+<h4>$\small L(4,1)$:</h4>
+```{r table3ex520, echo = FALSE, warning = FALSE, tidy = TRUE}
+rows <- c("Wariancja", "MSE", "Obciążenie")
+column1 <- c(laplace_data_2[[1]]$variance, laplace_data_2[[1]]$MSE, laplace_data_2[[1]]$bias)
+column2 <- c(laplace_data_2[[2]]$variance, laplace_data_2[[2]]$MSE, laplace_data_2[[2]]$bias)
+column3 <- c(laplace_data_2[[3]]$variance, laplace_data_2[[3]]$MSE, laplace_data_2[[3]]$bias)
+column4 <- c(laplace_data_2[[4]]$variance, laplace_data_2[[4]]$MSE, laplace_data_2[[4]]$bias)
+table <- data.frame(column1, column2, column3, column4)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$\\hat{\\theta_1}$", "$\\hat{\\theta_2}$", "$\\hat{\\theta_3}$", "$\\hat{\\theta_4}$"))
+```
+<h4>$\small L(1,2)$:</h4>
+```{r table4ex520, echo = FALSE, warning = FALSE, tidy = TRUE}
+rows <- c("Wariancja", "MSE", "Obciążenie")
+column1 <- c(laplace_data_3[[1]]$variance, laplace_data_3[[1]]$MSE, laplace_data_3[[1]]$bias)
+column2 <- c(laplace_data_3[[2]]$variance, laplace_data_3[[2]]$MSE, laplace_data_3[[2]]$bias)
+column3 <- c(laplace_data_3[[3]]$variance, laplace_data_3[[3]]$MSE, laplace_data_3[[3]]$bias)
+column4 <- c(laplace_data_3[[4]]$variance, laplace_data_3[[4]]$MSE, laplace_data_3[[4]]$bias)
+table <- data.frame(column1, column2, column3, column4)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$\\hat{\\theta_1}$", "$\\hat{\\theta_2}$", "$\\hat{\\theta_3}$", "$\\hat{\\theta_4}$"))
+```
+<p>Podsumowując uzyskane wyniki, zachodzi już większa rozbieżność naszego estymamtora od estymowanego parametru. Widać to najlepiej przy znacznym wzroście błędu średniokwadratowego. Można więc wysnuć wniosek, że próba romiaru $\small n = 20$ nie jest wystarczająca przy powyższym eksperymencie.</p>
+
+<h4>Eksperyment z zadania 5 dla n = 100</h4>
+
+```{r e5data100, echo = FALSE, tidy = TRUE, warning = FALSE}
+
+seq1 <- sapply(1:100, FUN = function(k){(2*k+100-1)/(2*100^2)})
+est3 <- function(Data) {
+  return(sum(seq1 * Data))
+}
+seq2 <- sapply(1:100, FUN = function(i){dnorm(qnorm((i-1)/100)) - dnorm(qnorm(i/100))})
+est4 <- function(Data) {
+  return(sum(seq2 * sort(Data)))
+} 
+laplace_data_1 <- list()
+laplace_data_1[[1]] <- generate(rlaplace, list(100, 1, 1), mean, theta = 1)
+laplace_data_1[[2]] <- generate(rlaplace, list(100, 1, 1), median, theta = 1)
+laplace_data_1[[3]] <- generate(rlaplace, list(100, 1, 1), est3, theta = 1)
+laplace_data_1[[4]] <- generate(rlaplace, list(100, 1, 1), est4, theta = 1)
+laplace_data_2 <- list()
+laplace_data_2[[1]] <- generate(rlaplace, list(100, 4, 1), mean, theta = 4)
+laplace_data_2[[2]] <- generate(rlaplace, list(100, 4, 1), median, theta = 4)
+laplace_data_2[[3]] <- generate(rlaplace, list(100, 4, 1), est3, theta = 4)
+laplace_data_2[[4]] <- generate(rlaplace, list(100, 4, 1), est4, theta = 4)
+laplace_data_3 <- list()
+laplace_data_3[[1]] <- generate(rlaplace, list(100, 1, 2), mean, theta = 1)
+laplace_data_3[[2]] <- generate(rlaplace, list(100, 1, 2), median, theta = 1)
+laplace_data_3[[3]] <- generate(rlaplace, list(100, 1, 2), est3, theta = 1)
+laplace_data_3[[4]] <- generate(rlaplace, list(100, 1, 2), est4, theta = 1)
+
+rows = c("$\\hat{\\theta_1}$", "$\\hat{\\theta_2}$", "$\\hat{\\theta_3}$", "$\\hat{\\theta_4}$")
+column1 <- sapply(1:4, function(x) laplace_data_1[[x]]$trial_est)
+column2 <- sapply(1:4, function(x) laplace_data_2[[x]]$trial_est)
+column3 <- sapply(1:4, function(x) laplace_data_3[[x]]$trial_est)
+table <- data.frame(column1, column2, column3)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$L(1,1)$", "$L(4,1)$", "$L(1,2)$"))
+```
+<h4>$\small L(1,1)$:</h4>
+```{r table2ex5100, echo = FALSE, warning = FALSE, tidy = TRUE}
+rows <- c("Wariancja", "MSE", "Obciążenie")
+column1 <- c(laplace_data_1[[1]]$variance, laplace_data_1[[1]]$MSE, laplace_data_1[[1]]$bias)
+column2 <- c(laplace_data_1[[2]]$variance, laplace_data_1[[2]]$MSE, laplace_data_1[[2]]$bias)
+column3 <- c(laplace_data_1[[3]]$variance, laplace_data_1[[3]]$MSE, laplace_data_1[[3]]$bias)
+column4 <- c(laplace_data_1[[4]]$variance, laplace_data_1[[4]]$MSE, laplace_data_1[[4]]$bias)
+table <- data.frame(column1, column2, column3, column4)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$\\hat{\\theta_1}$", "$\\hat{\\theta_2}$", "$\\hat{\\theta_3}$", "$\\hat{\\theta_4}$"))
+```
+<h4>$\small L(4,1)$:</h4>
+```{r table3ex5100, echo = FALSE, warning = FALSE, tidy = TRUE}
+rows <- c("Wariancja", "MSE", "Obciążenie")
+column1 <- c(laplace_data_2[[1]]$variance, laplace_data_2[[1]]$MSE, laplace_data_2[[1]]$bias)
+column2 <- c(laplace_data_2[[2]]$variance, laplace_data_2[[2]]$MSE, laplace_data_2[[2]]$bias)
+column3 <- c(laplace_data_2[[3]]$variance, laplace_data_2[[3]]$MSE, laplace_data_2[[3]]$bias)
+column4 <- c(laplace_data_2[[4]]$variance, laplace_data_2[[4]]$MSE, laplace_data_2[[4]]$bias)
+table <- data.frame(column1, column2, column3, column4)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$\\hat{\\theta_1}$", "$\\hat{\\theta_2}$", "$\\hat{\\theta_3}$", "$\\hat{\\theta_4}$"))
+```
+<h4>$\small L(1,2)$:</h4>
+```{r table4ex5100, echo = FALSE, warning = FALSE, tidy = TRUE}
+rows <- c("Wariancja", "MSE", "Obciążenie")
+column1 <- c(laplace_data_3[[1]]$variance, laplace_data_3[[1]]$MSE, laplace_data_3[[1]]$bias)
+column2 <- c(laplace_data_3[[2]]$variance, laplace_data_3[[2]]$MSE, laplace_data_3[[2]]$bias)
+column3 <- c(laplace_data_3[[3]]$variance, laplace_data_3[[3]]$MSE, laplace_data_3[[3]]$bias)
+column4 <- c(laplace_data_3[[4]]$variance, laplace_data_3[[4]]$MSE, laplace_data_3[[4]]$bias)
+table <- data.frame(column1, column2, column3, column4)
+row.names(table) <- rows
+knitr::kable(table, row.names = TRUE, escape = FALSE, format = "pipe", align = "c", col.names = c("$\\hat{\\theta_1}$", "$\\hat{\\theta_2}$", "$\\hat{\\theta_3}$", "$\\hat{\\theta_4}$"))
+```
+<p>Wraz ze wzrostem próby do $\small n = 100$ widać znaczną poprawę naszych estymatorów, poza estymatorem $\small \hat{\theta_4}$, którego wyniki są równie złe jak były przy $\small n = 50$. Ogółem można uznać, że warto brać większą próbę w powyższym eksperymencie, w celu uzyskania znacząco lepszych estymacji.</p>
